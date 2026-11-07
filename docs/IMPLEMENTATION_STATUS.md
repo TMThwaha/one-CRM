@@ -33,7 +33,7 @@ Last verified: 2026-11-07 — `npm run verify`: 58 tests passed, lint 0 problems
 | Custom fields UI, tags UI, duplicate *merge* | **Planned** | Columns exist (`tags`, `custom`); no UI. |
 | Notifications | **Planned** | |
 | Playwright E2E, accessibility automation, load tests | **Planned** | |
-| CI pipeline | Implemented (untested) | `.github/workflows/ci.yml` has not run. |
+| CI pipeline | Tested | `.github/workflows/ci.yml` ran green on GitHub Actions (2026-11-07, Ubuntu, Node 24): typecheck, lint, 58 tests, build, `npm audit --audit-level=high`. Runner pinned to `ubuntu-24.04`. |
 
 ## Phases 2–7
 All **Planned**. Nothing from communication, marketing, support, finance, automation, AI, company memory, industry templates, enterprise SSO, mobile, or integrations exists. Those documents are design intent only.
