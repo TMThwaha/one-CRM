@@ -1,0 +1,15 @@
+# Local PostgreSQL for production-like testing. NOTE: written but not executed in the build
+# environment (no Docker available there). Redis is not used yet.
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: onecrm
+      POSTGRES_PASSWORD: onecrm
+      POSTGRES_DB: onecrm
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+volumes:
+  pgdata:
