@@ -28,7 +28,7 @@ const VARIANTS: Record<Variant, string> = {
   primary: "bg-accent text-accent-fg hover:bg-accent-hover shadow-sm",
   secondary: "bg-surface text-fg border border-border-strong hover:bg-hover",
   ghost: "text-muted hover:text-fg hover:bg-hover",
-  danger: "bg-danger text-white hover:opacity-90",
+  danger: "bg-danger text-accent-fg hover:opacity-90",
 };
 
 export function Button({

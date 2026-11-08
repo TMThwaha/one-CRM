@@ -25,26 +25,26 @@ export function useSubmit<T extends object>(fn: (v: T) => Promise<void>) {
   return { error, run };
 }
 
-export function LoginForm() {
+export function LoginForm({ allowRegistration = false }: { allowRegistration?: boolean }) {
   const hydrated = useHydrated();
   const router = useRouter();
   const [step, setStep] = useState<"password" | "code">("password");
   const form = useForm<LoginInput>({ resolver: zodResolver(loginSchema), defaultValues: { email: "", password: "" } });
   const { error, run } = useSubmit<LoginInput>(async (v) => {
-    const res = await api<{ mfaRequired?: boolean }>("/auth/login", { method: "POST", body: v });
+    const res = await api<{ mfaRequired?: boolean; redirectTo?: string }>("/auth/login", { method: "POST", body: v });
     if (res?.mfaRequired) {
       setStep("code");
       return;
     }
-    router.replace("/dashboard");
+    router.replace(res?.redirectTo ?? "/dashboard");
     router.refresh();
   });
   const { errors, isSubmitting } = form.formState;
   if (step === "code") {
     return (
       <MfaCodeForm
-        onDone={() => {
-          router.replace("/dashboard");
+        onDone={(to) => {
+          router.replace(to);
           router.refresh();
         }}
         onBack={() => {
@@ -75,22 +75,24 @@ export function LoginForm() {
           Forgot your password?
         </Link>
       </p>
-      <p className="text-center text-sm text-muted">
-        New to ONECRM?{" "}
-        <Link href="/register" className="font-medium text-accent hover:underline">
-          Create an account
-        </Link>
-      </p>
+      {allowRegistration && (
+        <p className="text-center text-sm text-muted">
+          New to ONECRM?{" "}
+          <Link href="/register" className="font-medium text-accent hover:underline">
+            Create an account
+          </Link>
+        </p>
+      )}
     </form>
   );
 }
 
-function MfaCodeForm({ onDone, onBack }: { onDone: () => void; onBack: () => void }) {
+function MfaCodeForm({ onDone, onBack }: { onDone: (to: string) => void; onBack: () => void }) {
   const hydrated = useHydrated();
   const form = useForm<MfaCodeInput>({ resolver: zodResolver(mfaCodeSchema), defaultValues: { code: "" } });
   const { error, run } = useSubmit<MfaCodeInput>(async (v) => {
-    await api("/auth/mfa", { method: "POST", body: v });
-    onDone();
+    const res = await api<{ redirectTo?: string }>("/auth/mfa", { method: "POST", body: v });
+    onDone(res?.redirectTo ?? "/dashboard");
   });
   const { errors, isSubmitting } = form.formState;
   return (
@@ -166,18 +168,20 @@ export function AcceptInviteForm({
   organizationName,
   roleName,
   hasAccount,
+  invitedName,
 }: {
   token: string;
   email: string;
   organizationName: string;
   roleName: string;
   hasAccount: boolean;
+  invitedName?: string | null;
 }) {
   const hydrated = useHydrated();
   const router = useRouter();
   const form = useForm<AcceptInviteInput>({
     resolver: zodResolver(acceptInviteSchema),
-    defaultValues: { name: "", password: "" },
+    defaultValues: { name: invitedName ?? "", password: "" },
   });
   const { error, run } = useSubmit<AcceptInviteInput>(async (v) => {
     await api(`/invite/${token}`, { method: "POST", body: hasAccount ? { password: v.password } : v });

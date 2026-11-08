@@ -16,12 +16,14 @@ Base path `/api/v1`. JSON in/out. Cookie-authenticated (same-origin browser clie
 ## Endpoints
 | Method & path | Permission | Notes |
 |---|---|---|
-| `POST /auth/register` | public | Creates user + org (+ roles, default pipeline), sets cookie. 201 |
-| `POST /auth/login` | public | Sets cookie. 429 when locked/limited |
+| `POST /auth/register` | public | **404 unless `ALLOW_PUBLIC_REGISTRATION=true`** (development only). Creates user + org, sets cookie. 201 |
+| `POST /auth/setup` | public + `BOOTSTRAP_TOKEN` | One-time creation of the first Super Admin. 404 afterwards, and when no token is configured. 201 |
+| `POST /auth/login` | public | Sets cookie. Returns `{ok, redirectTo}` (`/super-admin` or `/dashboard`) or `{mfaRequired}`. 403 if the account has no active company. 429 when locked/limited |
+| `POST /auth/mfa` | pending session | Second sign-in step; returns `redirectTo` |
 | `POST /auth/logout` | public | Revokes session |
 | `GET /me` | any | User, org, role, permissions, organizations |
 | `POST /me/organization` | member | `{organizationId}` switch |
-| `POST /organizations` | any | Create additional org |
+| *(removed)* `POST /organizations` | — | Companies are created only by the Super Admin |
 | `GET /invite/{token}` · `POST /invite/{token}` | public | Preview / accept (`{name?, password}`) |
 | `GET/POST /invitations` · `DELETE /invitations/{id}` | `member.invite` | POST returns the one-time `url` |
 | `GET /members` · `PATCH /members/{id}` | `member.read` / `member.manage` | `{roleKey?, status?}` |
@@ -40,5 +42,21 @@ Base path `/api/v1`. JSON in/out. Cookie-authenticated (same-origin browser clie
 | `GET /dashboard` | any | Aggregates for the caller |
 | `GET /audit-logs` | `audit.read` | |
 | `GET /health` | public | `{status, database}` |
+
+### Platform (Super Admin) endpoints — `/api/v1/platform/*`
+Authorised **only** by the platform resolver. A company session, including a Company Admin's, gets **404** (the routes' existence is not disclosed); no session gets 401.
+
+| Method & path | Notes |
+|---|---|
+| `GET/POST /platform/companies` | GET: filters `q, country, industry, status, plan, from, to`, `sort`, `dir`, `page`. POST: `{company{…}, status, administrator{…}}` creates company + roles + pipeline + admin invitation in one transaction; returns the one-time invitation `url` and whether it was `emailed`. 409 on duplicate legal name / registration number in a country |
+| `GET/PATCH /platform/companies/{id}` | Detail with administrators, pending invitations, audit. PATCH takes any profile fields; only real changes are audited |
+| `POST /platform/companies/{id}/status` | `{status: active|suspended|deactivated|archived, reason}`; reason required unless activating; illegal transitions 409 |
+| `POST /platform/companies/{id}/administrators` | `{name, email, phone?, jobTitle?}`: promotes an existing member or issues a fresh invitation (older links for that email stop working) |
+| `DELETE /platform/companies/{id}/administrators/{membershipId}` | Steps a Company Admin down to Admin; refused for the last active one |
+| `POST /platform/companies/{id}/delete` | `{confirmName, password}`; archived companies only; soft delete |
+| `GET /platform/plans` | Plan catalogue |
+
+### Personal account endpoints (any signed-in person, company user or Super Admin)
+`GET/POST /me/mfa`, `POST /me/mfa/enable`, `POST /me/mfa/disable`, `POST /me/password`, `DELETE /me/sessions/{id}`, `POST /me/verification`.
 
 Request/response schemas are the zod definitions in `src/shared/schemas/*` (single source of truth for client and server validation).

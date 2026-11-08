@@ -6,6 +6,7 @@ import {
   authEvents,
   organizationMembers,
   organizations,
+  platformAdmins,
   rolePermissions,
   roles,
   sessions,
@@ -13,7 +14,7 @@ import {
 } from "@/server/db/schema";
 import { getConfig } from "@/server/platform/config";
 import { dummyHash, hashPassword, hashToken, newToken, verifyPassword } from "@/server/platform/crypto";
-import { conflict, invalid, rateLimited, unauthenticated } from "@/server/platform/errors";
+import { conflict, forbidden, invalid, rateLimited, unauthenticated } from "@/server/platform/errors";
 import { enforceRateLimit } from "@/server/platform/rate-limit";
 import { seedDefaultPipeline } from "@/server/modules/sales/seed";
 import {
@@ -23,7 +24,6 @@ import {
   type Scope,
 } from "@/shared/permissions";
 import {
-  createOrganizationSchema,
   registerSchema,
   type LoginInput,
   type RegisterInput,
@@ -40,10 +40,25 @@ export interface IssuedSession {
   expiresAt: Date;
   /** True when the password was correct but a second factor is still required. */
   mfaRequired?: boolean;
+  /** True for Global Super Admins (decides where the client lands after sign-in). */
+  platformAdmin?: boolean;
 }
 
 /** A session awaiting its second factor lives only briefly and grants no access. */
 export const MFA_PENDING_MINUTES = 10;
+
+/** Platform (Super Admin) sessions are deliberately short-lived. */
+export const PLATFORM_SESSION_HOURS = 12;
+
+export async function isPlatformAdmin(userId: string, db?: Pick<Database, "select">): Promise<boolean> {
+  const executor = db ?? (await getDatabase()).db;
+  const [row] = await executor.select({ id: platformAdmins.userId }).from(platformAdmins).where(eq(platformAdmins.userId, userId));
+  return Boolean(row);
+}
+
+export function sessionLifetimeMs(platformAdmin: boolean): number {
+  return platformAdmin ? PLATFORM_SESSION_HOURS * 3_600_000 : getConfig().SESSION_TTL_DAYS * 86_400_000;
+}
 
 const MAX_FAILED_LOGINS = 5;
 const LOCK_MINUTES = 15;
@@ -64,18 +79,66 @@ function slugify(name: string): string {
 
 type DbTx = Parameters<Parameters<Database["transaction"]>[0]>[0];
 
-/** Creates the organization, its system roles + permissions, default pipeline and the owner. */
-async function provisionOrganization(
+/** Profile and regional fields a company is created with. Everything is optional except the name. */
+export interface CompanyProfile {
+  name: string;
+  legalName?: string | null;
+  industry?: string | null;
+  country?: string | null;
+  region?: string | null;
+  city?: string | null;
+  address?: string | null;
+  website?: string | null;
+  businessEmail?: string | null;
+  businessPhone?: string | null;
+  phoneCountryCode?: string | null;
+  registrationNumber?: string | null;
+  taxId?: string | null;
+  logoUrl?: string | null;
+  baseCurrency?: string;
+  timezone?: string;
+  locale?: string;
+  dateFormat?: string;
+  planId?: string | null;
+  status?: "active" | "suspended";
+}
+
+/**
+ * Creates the company record, its system roles + permissions and its default pipeline. It does NOT
+ * create any member: callers add the first administrator (self-service owner, or an invitation).
+ */
+export async function createCompanyRecords(
   tx: DbTx,
-  opts: { userId: string; name: string; industry?: string },
-): Promise<{ organizationId: string; membershipId: string }> {
+  opts: { createdBy: string; profile: CompanyProfile },
+): Promise<{ organizationId: string; roleIds: Record<string, string> }> {
+  const p = opts.profile;
   const [org] = await tx
     .insert(organizations)
     .values({
-      name: opts.name,
-      slug: slugify(opts.name),
-      industry: opts.industry || "general",
-      createdBy: opts.userId,
+      name: p.name,
+      slug: slugify(p.name),
+      industry: p.industry || "general",
+      legalName: p.legalName ?? null,
+      country: p.country ?? null,
+      region: p.region ?? null,
+      city: p.city ?? null,
+      address: p.address ?? null,
+      website: p.website ?? null,
+      businessEmail: p.businessEmail ?? null,
+      businessPhone: p.businessPhone ?? null,
+      phoneCountryCode: p.phoneCountryCode ?? null,
+      registrationNumber: p.registrationNumber ?? null,
+      taxId: p.taxId ?? null,
+      logoUrl: p.logoUrl ?? null,
+      planId: p.planId ?? null,
+      status: p.status ?? "active",
+      statusChangedAt: new Date(),
+      // Omitted regional fields fall back to the column defaults (INR / Asia/Kolkata / en-IN).
+      ...(p.baseCurrency ? { baseCurrency: p.baseCurrency } : {}),
+      ...(p.timezone ? { timezone: p.timezone } : {}),
+      ...(p.locale ? { locale: p.locale } : {}),
+      ...(p.dateFormat ? { dateFormat: p.dateFormat } : {}),
+      createdBy: opts.createdBy,
     })
     .returning({ id: organizations.id });
 
@@ -102,15 +165,24 @@ async function provisionOrganization(
     }));
   });
   await tx.insert(rolePermissions).values(permRows);
+  await seedDefaultPipeline(tx as unknown as Database, org.id);
+  return { organizationId: org.id, roleIds: Object.fromEntries(roleRows.map((r) => [r.key, r.id])) };
+}
 
-  const ownerRoleId = roleRows.find((r) => r.key === "owner")!.id;
+/** Self-service path (disabled in production by default): a company plus its first Company Admin. */
+async function provisionOrganization(
+  tx: DbTx,
+  opts: { userId: string; name: string; industry?: string },
+): Promise<{ organizationId: string; membershipId: string }> {
+  const { organizationId, roleIds } = await createCompanyRecords(tx, {
+    createdBy: opts.userId,
+    profile: { name: opts.name, industry: opts.industry },
+  });
   const [member] = await tx
     .insert(organizationMembers)
-    .values({ organizationId: org.id, userId: opts.userId, roleId: ownerRoleId })
+    .values({ organizationId, userId: opts.userId, roleId: roleIds.owner })
     .returning({ id: organizationMembers.id });
-
-  await seedDefaultPipeline(tx as unknown as Database, org.id);
-  return { organizationId: org.id, membershipId: member.id };
+  return { organizationId, membershipId: member.id };
 }
 
 // ---------------------------------------------------------------------------------------
@@ -122,12 +194,12 @@ async function issueSession(
   userId: string,
   organizationId: string | null,
   meta: RequestMeta,
-  opts: { mfaPending?: boolean } = {},
+  opts: { mfaPending?: boolean; platformAdmin?: boolean } = {},
 ): Promise<IssuedSession> {
   const token = newToken();
   const expiresAt = opts.mfaPending
     ? new Date(Date.now() + MFA_PENDING_MINUTES * 60_000)
-    : new Date(Date.now() + getConfig().SESSION_TTL_DAYS * 86_400_000);
+    : new Date(Date.now() + sessionLifetimeMs(opts.platformAdmin ?? false));
   await db.insert(sessions).values({
     userId,
     tokenHash: hashToken(token),
@@ -137,7 +209,7 @@ async function issueSession(
     userAgent: meta.userAgent?.slice(0, 300) ?? null,
     expiresAt,
   });
-  return { token, expiresAt, mfaRequired: opts.mfaPending ? true : undefined };
+  return { token, expiresAt, mfaRequired: opts.mfaPending ? true : undefined, platformAdmin: opts.platformAdmin ?? false };
 }
 
 async function logAuthEvent(
@@ -227,6 +299,7 @@ export async function login(input: LoginInput, meta: RequestMeta): Promise<Issue
   }
 
   await db.update(users).set({ failedLoginCount: 0, lockedUntil: null }).where(eq(users.id, user.id));
+  const platformAdmin = await isPlatformAdmin(user.id, db);
   const [membership] = await db
     .select({ organizationId: organizationMembers.organizationId })
     .from(organizationMembers)
@@ -235,15 +308,22 @@ export async function login(input: LoginInput, meta: RequestMeta): Promise<Issue
       and(
         eq(organizationMembers.userId, user.id),
         eq(organizationMembers.status, "active"),
+        eq(organizations.status, "active"),
         isNull(organizations.deletedAt),
       ),
     )
     .orderBy(asc(organizationMembers.createdAt))
     .limit(1);
 
+  if (!platformAdmin && !membership) {
+    // The password was right, so explaining why access is unavailable reveals nothing to a stranger.
+    await logAuthEvent(db, { type: "login_no_active_company", success: false, userId: user.id, email, meta });
+    throw forbidden("Your account is not linked to an active company. Contact your company administrator.");
+  }
+
   const mfa = Boolean(user.mfaEnabledAt);
   await logAuthEvent(db, { type: mfa ? "login_password_ok_mfa_pending" : "login", success: true, userId: user.id, email, meta });
-  return issueSession(db, user.id, membership?.organizationId ?? null, meta, { mfaPending: mfa });
+  return issueSession(db, user.id, platformAdmin ? null : membership.organizationId, meta, { mfaPending: mfa, platformAdmin });
 }
 
 export async function logout(token: string): Promise<void> {
@@ -318,6 +398,7 @@ export async function resolveAuthContext(
           eq(organizationMembers.userId, row.user.id),
           eq(organizationMembers.organizationId, organizationId),
           eq(organizationMembers.status, "active"),
+          eq(organizations.status, "active"),
           isNull(organizations.deletedAt),
         ),
       )
@@ -337,6 +418,7 @@ export async function resolveAuthContext(
         and(
           eq(organizationMembers.userId, row.user.id),
           eq(organizationMembers.status, "active"),
+          eq(organizations.status, "active"),
           isNull(organizations.deletedAt),
         ),
       )
@@ -396,6 +478,7 @@ export async function listMyOrganizations(userId: string) {
       and(
         eq(organizationMembers.userId, userId),
         eq(organizationMembers.status, "active"),
+        eq(organizations.status, "active"),
         isNull(organizations.deletedAt),
       ),
     )
@@ -407,11 +490,14 @@ export async function switchOrganization(ctx: AuthContext, organizationId: strin
   const [m] = await db
     .select({ id: organizationMembers.id })
     .from(organizationMembers)
+    .innerJoin(organizations, eq(organizations.id, organizationMembers.organizationId))
     .where(
       and(
         eq(organizationMembers.userId, ctx.userId),
         eq(organizationMembers.organizationId, organizationId),
         eq(organizationMembers.status, "active"),
+        eq(organizations.status, "active"),
+        isNull(organizations.deletedAt),
       ),
     );
   // Same response for "no such org" and "not a member": do not reveal which orgs exist.
@@ -419,21 +505,4 @@ export async function switchOrganization(ctx: AuthContext, organizationId: strin
   await db.update(sessions).set({ activeOrganizationId: organizationId }).where(eq(sessions.id, ctx.sessionId));
 }
 
-export async function createAdditionalOrganization(
-  ctx: AuthContext,
-  input: { name: string; industry?: string },
-): Promise<{ organizationId: string }> {
-  const data = createOrganizationSchema.parse(input);
-  const { db } = await getDatabase();
-  return db.transaction(async (tx) => {
-    const { organizationId } = await provisionOrganization(tx, {
-      userId: ctx.userId,
-      name: data.name,
-      industry: data.industry,
-    });
-    await tx.update(sessions).set({ activeOrganizationId: organizationId }).where(eq(sessions.id, ctx.sessionId));
-    return { organizationId };
-  });
-}
-
-export { issueSession as _issueSession, provisionOrganization as _provisionOrganization };
+export { issueSession as _issueSession };

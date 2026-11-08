@@ -44,3 +44,24 @@ The scaffold enabled it. The app is entirely per-user dynamic data; the flag onl
 
 ## ADR-013 — No simulated integrations
 Where an external provider is needed (email, SMS, payments, AI) and no credentials exist, the feature is documented as not implemented rather than faked. Invitations therefore show a link instead of pretending to email.
+
+## ADR-014 — The Super Admin is a separate kind of identity, not a tenant role
+A Global Super Admin is a row in `platform_admins` (no organization). It is resolved by its own function (`resolvePlatformContext`), carries its own type (`PlatformContext`, which has no `organizationId`) and is served by its own API wrapper (`platformApi`). A company role, however powerful, cannot satisfy it, and a platform context cannot be passed to a tenant-scoped service by mistake. Non-platform callers get **404**, not 403. Chosen over a `super_admin` role inside `roles` because roles are per-organization and editable by Company Admins; a platform privilege must not live somewhere a tenant can touch.
+
+## ADR-015 — Company = organization; Company Admin = the system `owner` role
+The existing organization is the company (tenant root); renaming tables would be churn with no benefit. The `owner` system role is presented as **Company Admin** (same permissions). `admin` stays as a delegated administrator who cannot change company settings. Manager, Sales (employee) and Viewer are unchanged; custom roles remain Phase 3. A company must always keep one active Company Admin.
+
+## ADR-016 — Bootstrap by one-time setup token, no default credentials
+The first Super Admin is created at `/setup`, authorised by `BOOTSTRAP_TOKEN` (proof of server access, compared in constant time, rate limited). It works only while no Super Admin exists and refuses to promote an existing account; afterwards it is permanently a 404. No CLI was added (the `server-only` boundary makes scripts awkward) and nothing is seeded or hardcoded. Public registration is off by default (`ALLOW_PUBLIC_REGISTRATION`).
+
+## ADR-017 — Company status is enforced at request time
+`organizations.status` ∈ active / suspended / deactivated / archived. Every company request re-checks it (`resolveAuthContext`, login, org switching), so a suspension ends access on the member's very next request with no session surgery. A member of two companies falls back to the one that is still active. Deletion is a protected soft delete (archived only, legal name typed back, password re-entered); data is retained and a hard purge is deliberately not offered.
+
+## ADR-018 — Platform audit is append-only and mirrored to the company
+`platform_audit_logs` has a trigger that rejects UPDATE and DELETE even for the owning connection, and is invisible to the tenant role. Company-relevant events are also written into the company's own `audit_logs` (prefixed `platform.`), so a Company Admin can see what the platform did to their company. The tenant role may edit its own company *profile* columns but, by column-level grant, never `status`, `plan_id`, `slug`, `created_by` or `deleted_at`.
+
+## ADR-019 — Routes
+The platform lives at `/super-admin`. The company workspace keeps its existing URLs (`/dashboard`, `/contacts`, …) instead of moving under `/app`: a rename would touch every link, test and e2e flow for no functional gain.
+
+## ADR-020 — Regional settings are stored per company; the catalogue only supplies defaults
+`src/shared/countries.ts` pre-fills currency, time zone, language, date format and phone code when a company is created; the company stores its own values and can change each. Tax identifiers are labels only. Timestamps are UTC.

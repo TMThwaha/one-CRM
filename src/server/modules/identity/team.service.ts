@@ -25,7 +25,7 @@ import {
   type AcceptInviteInput,
   type InviteInput,
 } from "@/shared/schemas/identity";
-import { _issueSession, type IssuedSession, type RequestMeta } from "./auth.service";
+import { _issueSession, isPlatformAdmin, type IssuedSession, type RequestMeta } from "./auth.service";
 import { require as requirePerm, type AuthContext } from "./context";
 
 const INVITE_TTL_DAYS = 7;
@@ -264,6 +264,8 @@ async function findValidInvitation(token: string) {
     .select({
       invitation: invitations,
       organizationName: organizations.name,
+      organizationStatus: organizations.status,
+      organizationDeletedAt: organizations.deletedAt,
       roleName: roles.name,
     })
     .from(invitations)
@@ -274,7 +276,9 @@ async function findValidInvitation(token: string) {
     !row ||
     row.invitation.acceptedAt ||
     row.invitation.revokedAt ||
-    row.invitation.expiresAt < new Date()
+    row.invitation.expiresAt < new Date() ||
+    row.organizationDeletedAt ||
+    row.organizationStatus === "archived"
   ) {
     throw notFound("Invitation"); // identical for unknown, used, revoked and expired
   }
@@ -287,7 +291,13 @@ export async function previewInvitation(token: string) {
     .select({ id: users.id })
     .from(users)
     .where(sql`lower(${users.email}) = ${invitation.email.toLowerCase()}`);
-  return { email: invitation.email, organizationName, roleName, hasAccount: Boolean(existing) };
+  return {
+    email: invitation.email,
+    organizationName,
+    roleName,
+    hasAccount: Boolean(existing),
+    invitedName: invitation.invitedName ?? null,
+  };
 }
 
 export async function acceptInvitation(
@@ -307,12 +317,14 @@ export async function acceptInvitation(
   let userId: string;
   let newPasswordHash: string | undefined;
   if (existing) {
+    // Platform administrators sit outside every company; they can never become a company member.
+    if (await isPlatformAdmin(existing.id, db)) throw notFound("Invitation");
     if (!(await verifyPassword(data.password, existing.passwordHash))) {
       throw unauthenticated("That password is incorrect for the invited account");
     }
     userId = existing.id;
   } else {
-    if (!data.name) throw invalid("Your name is required");
+    if (!(data.name || invitation.invitedName)) throw invalid("Your name is required");
     const pw = passwordSchema.safeParse(data.password);
     if (!pw.success) throw invalid(pw.error.issues[0].message);
     newPasswordHash = await hashPassword(data.password);
@@ -333,7 +345,8 @@ export async function acceptInvitation(
         .insert(users)
         .values({
           email: invitation.email.toLowerCase(),
-          name: data.name!,
+          name: (data.name || invitation.invitedName)!,
+          phone: invitation.phone,
           passwordHash: newPasswordHash!,
           // The invitation link was delivered to this address, which proves control of it.
           emailVerifiedAt: new Date(),
@@ -344,10 +357,10 @@ export async function acceptInvitation(
 
     await tx
       .insert(organizationMembers)
-      .values({ organizationId: invitation.organizationId, userId, roleId: invitation.roleId })
+      .values({ organizationId: invitation.organizationId, userId, roleId: invitation.roleId, jobTitle: invitation.jobTitle })
       .onConflictDoUpdate({
         target: [organizationMembers.organizationId, organizationMembers.userId],
-        set: { status: "active", roleId: invitation.roleId, updatedAt: new Date() },
+        set: { status: "active", roleId: invitation.roleId, updatedAt: new Date(), ...(invitation.jobTitle ? { jobTitle: invitation.jobTitle } : {}) },
       });
     await tx
       .update(invitations)

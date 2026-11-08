@@ -12,8 +12,8 @@ import { enforceRateLimit } from "@/server/platform/rate-limit";
 import { decryptSecret, encryptSecret } from "@/server/platform/secrets";
 import { generateTotpSecret, otpauthUri, verifyTotp } from "@/server/platform/totp";
 import { passwordSchema } from "@/shared/schemas/identity";
-import { MFA_PENDING_MINUTES, type RequestMeta } from "./auth.service";
-import type { AuthContext } from "./context";
+import { MFA_PENDING_MINUTES, isPlatformAdmin, sessionLifetimeMs, type RequestMeta } from "./auth.service";
+import type { AccountContext } from "./context";
 
 const RESET_TTL_MINUTES = 60;
 const VERIFY_TTL_HOURS = 48;
@@ -30,7 +30,7 @@ function newRecoveryCodes(n = 8): string[] {
 }
 const normaliseRecovery = (c: string) => c.trim().toLowerCase().replace(/\s/g, "");
 
-export async function mfaStatus(ctx: AuthContext) {
+export async function mfaStatus(ctx: AccountContext) {
   const { db } = await getDatabase();
   const [u] = await db
     .select({ enabledAt: users.mfaEnabledAt, hashes: users.mfaRecoveryHashes })
@@ -40,7 +40,7 @@ export async function mfaStatus(ctx: AuthContext) {
 }
 
 /** Starts enrolment: generates and stores (encrypted) a seed that is inactive until confirmed. */
-export async function mfaBeginSetup(ctx: AuthContext) {
+export async function mfaBeginSetup(ctx: AccountContext) {
   const { db } = await getDatabase();
   const [u] = await db.select({ enabledAt: users.mfaEnabledAt }).from(users).where(eq(users.id, ctx.userId));
   if (u?.enabledAt) throw conflict("Two-factor authentication is already enabled");
@@ -51,7 +51,7 @@ export async function mfaBeginSetup(ctx: AuthContext) {
 }
 
 /** Confirms enrolment with a valid code and returns the one-time recovery codes. */
-export async function mfaEnable(ctx: AuthContext, code: string) {
+export async function mfaEnable(ctx: AccountContext, code: string) {
   await enforceRateLimit(`mfa-enable:${ctx.userId}`, 10, 10 * 60_000);
   const { db } = await getDatabase();
   const [u] = await db.select().from(users).where(eq(users.id, ctx.userId));
@@ -66,7 +66,7 @@ export async function mfaEnable(ctx: AuthContext, code: string) {
   return { recoveryCodes: codes };
 }
 
-export async function mfaDisable(ctx: AuthContext, input: { password: string; code: string }) {
+export async function mfaDisable(ctx: AccountContext, input: { password: string; code: string }) {
   await enforceRateLimit(`mfa-disable:${ctx.userId}`, 10, 10 * 60_000);
   const { db } = await getDatabase();
   const [u] = await db.select().from(users).where(eq(users.id, ctx.userId));
@@ -114,9 +114,10 @@ export async function completeMfaLogin(token: string | undefined, code: string, 
     await db.insert(authEvents).values({ type: "mfa_failed", success: false, userId: row.user.id, ip: meta.ip ?? null });
     throw unauthenticated("That code is not correct");
   }
-  const expiresAt = new Date(Date.now() + getConfig().SESSION_TTL_DAYS * 86_400_000);
+  const platformAdmin = await isPlatformAdmin(row.user.id, db);
+  const expiresAt = new Date(Date.now() + sessionLifetimeMs(platformAdmin));
   await db.update(sessions).set({ mfaPending: false, expiresAt }).where(eq(sessions.id, row.session.id));
-  return { token, expiresAt };
+  return { token, expiresAt, platformAdmin };
 }
 
 // ---------------------------------------------------------------------------------------
@@ -197,7 +198,7 @@ export async function sendVerificationEmail(userId: string): Promise<void> {
   });
 }
 
-export async function resendVerification(ctx: AuthContext): Promise<void> {
+export async function resendVerification(ctx: AccountContext): Promise<void> {
   await enforceRateLimit(`verify-resend:${ctx.userId}`, 3, 60 * 60_000);
   await sendVerificationEmail(ctx.userId);
 }
@@ -218,7 +219,7 @@ export async function isEmailVerified(userId: string): Promise<boolean> {
 // Password change & session management
 // ---------------------------------------------------------------------------------------
 
-export async function changePassword(ctx: AuthContext, input: { currentPassword: string; newPassword: string }) {
+export async function changePassword(ctx: AccountContext, input: { currentPassword: string; newPassword: string }) {
   await enforceRateLimit(`pw-change:${ctx.userId}`, 10, 15 * 60_000);
   const pw = passwordSchema.safeParse(input.newPassword);
   if (!pw.success) throw invalid(pw.error.issues[0].message);
@@ -234,7 +235,7 @@ export async function changePassword(ctx: AuthContext, input: { currentPassword:
   });
 }
 
-export async function listMySessions(ctx: AuthContext) {
+export async function listMySessions(ctx: AccountContext) {
   const { db } = await getDatabase();
   const rows = await db
     .select({ id: sessions.id, ip: sessions.ip, userAgent: sessions.userAgent, createdAt: sessions.createdAt, lastSeenAt: sessions.lastSeenAt })
@@ -244,7 +245,7 @@ export async function listMySessions(ctx: AuthContext) {
   return rows.map((r) => ({ ...r, current: r.id === ctx.sessionId }));
 }
 
-export async function revokeMySession(ctx: AuthContext, sessionId: string) {
+export async function revokeMySession(ctx: AccountContext, sessionId: string) {
   const { db } = await getDatabase();
   const res = await db
     .update(sessions)

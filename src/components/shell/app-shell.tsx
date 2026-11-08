@@ -36,7 +36,7 @@ function useNav(): { main: NavItem[]; admin: NavItem[] } {
 }
 
 /** Minimal accessible popover menu. */
-function Popover({ trigger, children, align = "right", label }: { trigger: ReactNode; children: (close: () => void) => ReactNode; align?: "left" | "right"; label?: string }) {
+export function Popover({ trigger, children, align = "right", label }: { trigger: ReactNode; children: (close: () => void) => ReactNode; align?: "left" | "right"; label?: string }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -61,7 +61,7 @@ function Popover({ trigger, children, align = "right", label }: { trigger: React
   );
 }
 
-function MenuItem({ children, onClick, icon: Icon, active }: { children: ReactNode; onClick: () => void; icon?: LucideIcon; active?: boolean }) {
+export function MenuItem({ children, onClick, icon: Icon, active }: { children: ReactNode; onClick: () => void; icon?: LucideIcon; active?: boolean }) {
   return (
     <button role="menuitem" onClick={onClick} className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm hover:bg-hover">
       {Icon && <Icon className="h-4 w-4 text-muted" aria-hidden />}
@@ -101,7 +101,7 @@ function subscribeTheme(cb: () => void) {
   return () => { themeListeners.delete(cb); };
 }
 
-function ThemeToggle() {
+export function ThemeToggle() {
   const mode = useSyncExternalStore(subscribeTheme, readTheme, () => "system" as ThemeMode);
   const Icon = mode === "dark" ? Moon : mode === "light" ? Sun : Monitor;
   return (

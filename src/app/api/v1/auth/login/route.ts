@@ -9,5 +9,6 @@ export const POST = publicApi(async ({ body, ip, userAgent }) => {
   // With MFA the cookie carries a short-lived *pending* session that grants nothing until the
   // second step completes.
   await setSessionCookie(s.token, s.expiresAt);
-  return s.mfaRequired ? { ok: true, mfaRequired: true } : { ok: true };
+  if (s.mfaRequired) return { ok: true, mfaRequired: true };
+  return { ok: true, redirectTo: s.platformAdmin ? "/super-admin" : "/dashboard" };
 });

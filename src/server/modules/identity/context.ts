@@ -18,6 +18,12 @@ export interface AuthContext {
   ip?: string | null;
 }
 
+/**
+ * What personal-account operations (2FA, password, sessions) need: a person and their session, with
+ * no company. Both a company AuthContext and a Super Admin PlatformContext satisfy it.
+ */
+export type AccountContext = Pick<AuthContext, "userId" | "userName" | "userEmail" | "sessionId" | "ip">;
+
 export function can(ctx: AuthContext, permission: Permission): boolean {
   return ctx.permissions[permission] !== undefined;
 }

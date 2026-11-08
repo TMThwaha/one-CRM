@@ -11,6 +11,9 @@
 | 6 | Marketing, customer success, analytics, finance workflows, projects, company memory, industry templates, no-code customization | Planned |
 | 7 | Enterprise (SSO, retention, consent, regional), i18n, mobile/offline, marketplace, public API, scale | Planned |
 
+## Platform hierarchy (built 2026-11-08)
+Super Admin bootstrap and panel, company creation with administrator invitation, company lifecycle, platform audit, tenant-isolation tests across companies. **Next, in order:** Phase 3 company-admin workspace (company profile, departments/teams, custom roles, company settings incl. logo upload and workspace date formatting in the company time zone), then support-access sessions, enforced Super Admin MFA, and plan limits/pricing.
+
 ## Phase 1 completion gaps (next milestone, "1.1")
 Must-do before treating Phase 1 as production-ready:
 1. ~~MFA (TOTP), email verification, password reset~~ — built (needs `SMTP_URL` for real delivery; see KNOWN_LIMITATIONS).

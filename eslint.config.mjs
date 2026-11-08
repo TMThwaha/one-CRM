@@ -6,11 +6,14 @@ const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
   // Tenant data must only be reached through withTenant(). The owning (RLS-bypassing)
-  // connection is confined to the identity module, the db layer, and the health check.
+  // connection is confined to the identity module, the platform-admin module (Super Admin: it works
+  // ABOVE every tenant by design and is reachable only through the platform resolver), the db layer,
+  // and the health check.
   {
     files: ["src/**/*.{ts,tsx}"],
     ignores: [
       "src/server/modules/identity/**",
+      "src/server/modules/platform-admin/**",
       "src/server/db/**",
       "src/server/platform/rate-limit.ts",
       "src/app/api/v1/health/**",

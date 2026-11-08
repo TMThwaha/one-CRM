@@ -6,6 +6,7 @@ import {
   foreignKey,
   index,
   integer,
+  numeric,
   pgTable,
   primaryKey,
   text,
@@ -22,6 +23,7 @@ export const users = pgTable(
     id: pk(),
     email: text("email").notNull(),
     name: text("name").notNull(),
+    phone: text("phone"),
     passwordHash: text("password_hash").notNull(),
     emailVerifiedAt: tstz("email_verified_at"),
     failedLoginCount: integer("failed_login_count").notNull().default(0),
@@ -38,6 +40,32 @@ export const users = pgTable(
   (t) => [uniqueIndex("users_email_lower_uq").on(sql`lower(${t.email})`)],
 );
 
+/** Platform-level plan catalogue. Prices and limits are set by the Super Admin; null means "not set". */
+export const subscriptionPlans = pgTable("subscription_plans", {
+  id: pk(),
+  key: text("key").notNull().unique(),
+  name: text("name").notNull(),
+  sortOrder: integer("sort_order").notNull().default(0),
+  monthlyPrice: numeric("monthly_price", { precision: 12, scale: 2 }),
+  annualPrice: numeric("annual_price", { precision: 12, scale: 2 }),
+  priceCurrency: char("price_currency", { length: 3 }),
+  maxEmployees: integer("max_employees"),
+  maxStorageMb: integer("max_storage_mb"),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: createdAt(),
+  updatedAt: updatedAt(),
+});
+
+/**
+ * Global Super Admins. Deliberately NOT a tenant role: it lives outside every organization, has no
+ * organization_id, and is unreachable by the tenant database role. Rows are created only by the
+ * one-time bootstrap (see platform-admin/bootstrap.service).
+ */
+export const platformAdmins = pgTable("platform_admins", {
+  userId: uuid("user_id").primaryKey().references(() => users.id),
+  createdAt: createdAt(),
+});
+
 /** Tenant root. */
 export const organizations = pgTable(
   "organizations",
@@ -49,12 +77,42 @@ export const organizations = pgTable(
     baseCurrency: char("base_currency", { length: 3 }).notNull().default("INR"),
     timezone: text("timezone").notNull().default("Asia/Kolkata"),
     locale: text("locale").notNull().default("en-IN"),
+    /** Registered legal name; `name` is the display name. */
+    legalName: text("legal_name"),
+    status: text("status").notNull().default("active"),
+    statusReason: text("status_reason"),
+    statusChangedAt: tstz("status_changed_at"),
+    country: char("country", { length: 2 }),
+    region: text("region"),
+    city: text("city"),
+    address: text("address"),
+    website: text("website"),
+    businessEmail: text("business_email"),
+    businessPhone: text("business_phone"),
+    phoneCountryCode: text("phone_country_code"),
+    registrationNumber: text("registration_number"),
+    taxId: text("tax_id"),
+    logoUrl: text("logo_url"),
+    dateFormat: text("date_format").notNull().default("dd/MM/yyyy"),
+    planId: uuid("plan_id").references(() => subscriptionPlans.id),
     createdBy: uuid("created_by").references(() => users.id),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
     deletedAt: tstz("deleted_at"),
   },
-  (t) => [check("organizations_currency_chk", sql`${t.baseCurrency} ~ '^[A-Z]{3}$'`)],
+  (t) => [
+    check("organizations_currency_chk", sql`${t.baseCurrency} ~ '^[A-Z]{3}$'`),
+    check("organizations_status_chk", sql`${t.status} in ('active','suspended','deactivated','archived')`),
+    check("organizations_country_chk", sql`${t.country} is null or ${t.country} ~ '^[A-Z]{2}$'`),
+    // One live company per legal name per country (case-insensitive): prevents accidental duplicates.
+    uniqueIndex("organizations_legal_name_country_uq")
+      .on(sql`lower(${t.legalName})`, t.country)
+      .where(sql`${t.legalName} is not null and ${t.deletedAt} is null`),
+    uniqueIndex("organizations_registration_uq")
+      .on(t.country, sql`lower(${t.registrationNumber})`)
+      .where(sql`${t.registrationNumber} is not null and ${t.deletedAt} is null`),
+    index("organizations_status_idx").on(t.status),
+  ],
 );
 
 export const roles = pgTable(
@@ -125,6 +183,10 @@ export const invitations = pgTable(
     roleId: uuid("role_id").notNull(),
     /** SHA-256 of the invitation token. The token itself is never stored. */
     tokenHash: text("token_hash").notNull().unique(),
+    /** Details the inviter supplied about the invitee (used for appointed company administrators). */
+    invitedName: text("invited_name"),
+    jobTitle: text("job_title"),
+    phone: text("phone"),
     invitedBy: uuid("invited_by").notNull().references(() => users.id),
     expiresAt: tstz("expires_at").notNull(),
     acceptedAt: tstz("accepted_at"),

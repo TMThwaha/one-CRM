@@ -3,3 +3,4 @@ export * from "./crm";
 export * from "./sales";
 export * from "./workforce";
 export * from "./platform";
+export * from "./platform-admin";

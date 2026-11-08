@@ -2,7 +2,24 @@
 
 Legend: **Tested** = covered by automated tests that pass. **Implemented** = works end to end but only manually exercised. **Planned** = not built.
 
-Last verified: 2026-11-07 — `npm run verify`: 58 tests passed, lint 0 problems, typecheck clean, production build succeeds. Account-security HTTP flow (register → enable MFA → pending login → code → access) also exercised against a running dev server with curl; pages were **not** viewed in a browser.
+Last verified: 2026-11-08 — `npm run verify`: 86 unit/integration tests passed, lint 0 problems, typecheck clean, production build succeeds, `npm audit --omit=dev` 0 vulnerabilities. Playwright (real Chrome, production build, fresh database): 17 tests passed, including axe WCAG 2.1 A/AA scans of every Super Admin page in light and dark mode. CI has not yet run on this commit.
+
+## Platform hierarchy (Super Admin → Companies → Company Admin → employees)
+
+| Feature | State | Notes |
+|---|---|---|
+| Super Admin identity, one-time secure bootstrap (`/setup`) | Tested | Unit + browser. No default credentials; closes forever; refuses existing accounts. |
+| Separate Super Admin panel (`/super-admin`) and platform authorization path | Tested | Company Admin gets 404 on pages and API; verified over HTTP and in the browser. |
+| Public registration disabled (centrally managed) | Tested | Flag `ALLOW_PUBLIC_REGISTRATION`; self-service org creation removed. |
+| Create company (transactional) + appoint administrator by invitation | Tested | Atomic (fault-injection test), duplicate prevention, invitation single-use, hashed token, optional email. |
+| Companies list: search, filters, sort, pagination, admin/employee columns | Tested (data) / Implemented (UI) | |
+| Company detail, edit, change/promote/demote administrator | Tested (data) / Implemented (UI) | Last-admin guard. |
+| Activate / suspend / deactivate / archive / protected delete | Tested | Access ends on the next request; reason required and audited. |
+| Platform overview (live aggregates), users, administrators, countries, plans (read-only) | Tested (data) / Implemented (UI) | No revenue shown: billing is not integrated. |
+| Platform audit log (append-only) + mirror into company audit | Tested | |
+| Country/currency/time-zone defaults per company | Tested (storage, validation, defaults) | Workspace date display still uses the browser zone (see KNOWN_LIMITATIONS). |
+| Super Admin MFA | Implemented | Available; not enforced. |
+| Support-access sessions, plan limits/pricing, usage, AI settings, integrations, announcements, system health | **Planned** | |
 
 ## Phase 1 — Foundation
 
@@ -11,7 +28,7 @@ Last verified: 2026-11-07 — `npm run verify`: 58 tests passed, lint 0 problems
 | Application shell (nav, org switcher, command palette, create menu, theme) | Implemented | Rendered and checked via server-side requests only; **not visually verified in a browser** (extension unavailable). |
 | Registration, login, logout | Tested | Lockout after 5 failures, generic errors, timing equalisation. |
 | Sessions (server-side, hashed token, revocable, expiry) | Tested | |
-| Organization creation + multiple orgs per user + switching | Tested | UI for *creating an additional* org is not built (API only). |
+| Company membership + multiple companies per person + switching | Tested | Companies are created only by the Super Admin; membership comes from invitations. |
 | Tenant isolation (app layer, RLS, composite FKs) | Tested | See SECURITY_MODEL. |
 | Invitations (create, preview, accept once, revoke) | Tested | **No email is sent** — the inviter copies the link. |
 | Roles & permissions (5 system roles, scopes `all`/`own`) | Tested | Custom roles: not built. `team` scope is enforced as `own`. |

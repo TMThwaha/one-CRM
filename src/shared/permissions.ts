@@ -58,14 +58,14 @@ export interface SystemRoleDef {
 export const SYSTEM_ROLES: SystemRoleDef[] = [
   {
     key: "owner",
-    name: "Owner",
-    description: "Full control of the organization, including settings and roles.",
+    name: "Company Admin",
+    description: "Full control of the company workspace: team, roles, settings and all business data.",
     permissions: all(...ALL_PERMISSIONS),
   },
   {
     key: "admin",
     name: "Admin",
-    description: "Manages the team and all CRM data. Cannot change organization settings.",
+    description: "Delegated administrator: manages the team and all CRM data. Cannot change company settings.",
     permissions: all(...ALL_PERMISSIONS.filter((p) => p !== "org.manage")),
   },
   {

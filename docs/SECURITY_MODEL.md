@@ -10,7 +10,7 @@ No certification or regulatory compliance is claimed. This documents controls th
 - Multi-factor: TOTP (RFC 6238, SHA-1, 6 digits, ±1 step) with seeds encrypted at rest (AES-256-GCM, `APP_ENCRYPTION_KEY`). Password step creates a short-lived *pending* session (10 min) that resolves to no identity anywhere until the code is verified; guessing is throttled per pending session and per user. 8 single-use recovery codes, stored hashed. Disabling needs password and a code.
 - Password reset: single-use, 60-minute, hashed tokens; a newer request invalidates older links; identical response for known/unknown accounts; completing a reset revokes all sessions and clears lockout. Changing a password revokes other sessions. Users can list and revoke their own sessions (Settings → Security).
 - Email verification: 48-hour single-use token confirmed with an explicit button (POST) so link scanners cannot consume it. Not enforced at sign-in.
-- **Missing:** WebAuthn/passkeys, enforced MFA policy, admin MFA reset, breach-password check, step-up auth for sensitive actions.
+- **Missing:** WebAuthn/passkeys, enforced MFA policy (including for the Super Admin), admin MFA reset, breach-password check, step-up auth for sensitive actions.
 
 ## Authorization
 - RBAC: permission catalog in `src/shared/permissions.ts`; five system roles; scopes `all`/`own`.
@@ -50,3 +50,12 @@ Audit rows are written in the same transaction as the change (actor, action, ent
 
 ## Required before any real deployment
 CSP, validation of RLS on the production Postgres with a non-owner connection role, an SMTP provider plus `APP_ENCRYPTION_KEY` in secret management, backup/restore drill, external security review.
+
+## Platform administration (Global Super Admin)
+- **Separate identity class.** `platform_admins` has no organization, is created only by the one-time bootstrap, and is unreachable by the tenant database role. Resolved by `resolvePlatformContext`; every `/super-admin` page is gated in its layout and every `/api/v1/platform/*` route by `platformApi`. A Company Admin gets 404 on all of them; signed-out visitors are sent to sign-in / get 401.
+- **No self-promotion path.** No endpoint creates or promotes a Super Admin. Bootstrap refuses an existing email. A platform admin's email cannot be appointed or invited as a company administrator, and an invitation cannot be accepted by one.
+- **Bootstrap.** `BOOTSTRAP_TOKEN` (24+ chars, server-side secret), constant-time compare, rate limited (per IP and global), serialised with a table lock, closed permanently once a Super Admin exists.
+- **Sessions.** Super Admin sessions last 12 hours (company sessions 14 days). Two-factor authentication is supported and a persistent banner asks for it, but it is **not enforced**.
+- **Company isolation.** Unchanged three-layer model (service checks, RLS under `onecrm_app`, composite FKs), now tested across independently created companies: list, IDOR by id, switching, and direct SQL. The tenant role cannot read platform tables nor write company status/plan.
+- **Lifecycle.** Suspended/deactivated/archived companies lose access on the next request. Appointments, status changes, plan/profile edits and deletions are all in the append-only platform audit and mirrored into the company's audit log.
+- **Support access.** There is **no impersonation or support-access mechanism**: the Super Admin cannot open a company workspace at all. The planned logged support-access session (reason, window, visible to the company) is not built.

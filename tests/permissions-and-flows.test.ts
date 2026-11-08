@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { eq } from "drizzle-orm";
 import type { DatabaseHandle } from "@/server/db/client";
 import { sessions } from "@/server/db/schema";
-import { login, logout, resolveAuthContext, switchOrganization, createAdditionalOrganization } from "@/server/modules/identity/auth.service";
+import { login, logout, resolveAuthContext, switchOrganization } from "@/server/modules/identity/auth.service";
 import { createInvitation, acceptInvitation, previewInvitation, updateMember, revokeInvitation, listInvitations } from "@/server/modules/identity/team.service";
 import { createCompany } from "@/server/modules/crm/companies.service";
 import { createContact, getContact, listContacts, updateContact } from "@/server/modules/crm/contacts.service";
@@ -142,10 +142,14 @@ describe("roles, invitations and privilege escalation", () => {
   });
 
   it("users can belong to several organizations and switch between them", async () => {
-    const second = await createAdditionalOrganization(rep1, { name: "Side Hustle" });
+    // Memberships come from invitations only: self-service organization creation no longer exists.
+    const side = (await signUpOrg("Side Hustle")).ctx;
+    const { token } = await createInvitation(side, { email: rep1.userEmail, roleKey: "viewer" });
+    await acceptInvitation(token, { password: "correct-horse-battery" }, { ip: "1.2.3.4" });
+    await switchOrganization(rep1, side.organizationId);
     const ctx2 = (await resolveAuthContext(rep1Token))!;
-    expect(ctx2.organizationId).toBe(second.organizationId);
-    expect(ctx2.roleKey).toBe("owner");
+    expect(ctx2.organizationId).toBe(side.organizationId);
+    expect(ctx2.roleKey).toBe("viewer");
     await switchOrganization(ctx2, owner.organizationId);
     expect((await resolveAuthContext(rep1Token))!.organizationId).toBe(owner.organizationId);
     const stranger = (await signUpOrg("Stranger")).ctx;

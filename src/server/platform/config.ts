@@ -12,6 +12,16 @@ const schema = z.object({
   APP_ENCRYPTION_KEY: z.string().optional(),
   /** e.g. smtps://user:pass@smtp.example.com:465 . Without it, email is NOT delivered (logged only). */
   SMTP_URL: z.string().optional(),
+  /**
+   * One-time secret that authorises creating the FIRST Super Admin at /setup. Min 24 chars. Remove it
+   * from the environment once the Super Admin exists; setup is permanently closed after that anyway.
+   */
+  BOOTSTRAP_TOKEN: z.string().min(24, "BOOTSTRAP_TOKEN must be at least 24 characters").optional(),
+  /**
+   * OneCRM is centrally managed: companies are created by the Super Admin. Self-service sign-up is
+   * OFF unless this is explicitly "true" (development and automated tests only).
+   */
+  ALLOW_PUBLIC_REGISTRATION: z.enum(["true", "false"]).default("false"),
   MAIL_FROM: z.string().default("ONECRM <no-reply@localhost>"),
   SESSION_TTL_DAYS: z.coerce.number().int().min(1).max(90).default(14),
 });

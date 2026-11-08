@@ -1,9 +1,9 @@
-import { api } from "@/server/http/api";
+import { accountApi } from "@/server/http/api";
 import { mfaDisable } from "@/server/modules/identity/account.service";
 import { AppError, invalid } from "@/server/platform/errors";
 import { mfaDisableSchema } from "@/shared/schemas/identity";
 
-export const POST = api(async ({ ctx, body }) => {
+export const POST = accountApi(async ({ ctx, body }) => {
   const input = mfaDisableSchema.parse(await body());
   try {
     await mfaDisable(ctx, input);
