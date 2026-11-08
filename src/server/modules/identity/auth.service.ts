@@ -109,7 +109,7 @@ export interface CompanyProfile {
  */
 export async function createCompanyRecords(
   tx: DbTx,
-  opts: { createdBy: string; profile: CompanyProfile },
+  opts: { createdBy: string | null; profile: CompanyProfile },
 ): Promise<{ organizationId: string; roleIds: Record<string, string> }> {
   const p = opts.profile;
   const [org] = await tx
@@ -232,7 +232,7 @@ async function logAuthEvent(
 
 export async function register(input: RegisterInput, meta: RequestMeta): Promise<IssuedSession> {
   const data = registerSchema.parse(input);
-  await enforceRateLimit(`register:ip:${meta.ip ?? "unknown"}`, 10, 60 * 60_000);
+  await enforceRateLimit(`register:ip:${meta.ip ?? "unknown"}`, getConfig().REGISTER_RATE_LIMIT_PER_HOUR, 60 * 60_000);
   const { db } = await getDatabase();
   const passwordHash = await hashPassword(data.password);
 

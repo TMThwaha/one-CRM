@@ -25,6 +25,17 @@ Data persists in `.data/pglite/`. To start fresh, stop the server and delete `.d
 
 Try the permission model: as a Company Admin, **Settings → Team → Invite teammate**, pick the *Sales* role, open the link in a private window, then create a deal in each account. The Sales user only ever sees their own deals and leads.
 
+### Optional: dummy company for local testing
+
+`npm run seed:dev` creates one dummy company ("Nexora Technologies Pvt Ltd", India) and its **Company Admin**, so you can try a company workspace without using the Super Admin panel. It is development-only, refuses to run in production, is idempotent, and takes the password at run time so none is stored in the repo:
+
+```bash
+# stop the dev server first: the embedded database is single-process
+SEED_ADMIN_PASSWORD='<at least 10 characters>' npm run seed:dev
+```
+
+Sign in at `/login` with the email `admin@nexoratech.test` (people sign in by email; there are no usernames). This is a *company* account, not the platform Super Admin, which is created once at `/setup`.
+
 ### Commands
 
 | Command | What it does |

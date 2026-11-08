@@ -88,7 +88,9 @@ describe("super admin bootstrap", () => {
 
   it("creates the first Super Admin, then closes permanently", async () => {
     saEmail = "root@example.test";
-    await bootstrapSuperAdmin({ token: BOOT, name: "Platform Owner", email: saEmail, password: PW }, { ip: "9.9.9.1" });
+    // Surrounding whitespace (a common copy-and-paste artefact) must not make the right token fail.
+    await bootstrapSuperAdmin({ token: `  ${BOOT}
+`, name: "Platform Owner", email: saEmail, password: PW }, { ip: "9.9.9.1" });
     expect(await isBootstrapOpen()).toBe(false);
     // A second attempt, even with the correct token, is refused: setup is closed for good.
     await expect(bootstrapSuperAdmin({ token: BOOT, name: "Second", email: "second@example.test", password: PW }, { ip: "9.9.9.2" }))

@@ -2,7 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import {
-  Building2, CheckSquare, CornerDownLeft, Handshake, LayoutDashboard, Search, ScrollText, Target, UserPlus, Users, UsersRound,
+  Building2, CheckSquare, CornerDownLeft, Handshake, KeyRound, LayoutDashboard, Search, ScrollText, Target, UserPlus, Users, UsersRound,
   type LucideIcon,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -70,6 +70,7 @@ function PaletteBody({ onClose }: { onClose: () => void }) {
       can("company.read") && { key: "n-companies", label: "Go to Companies", group: "Navigate", icon: Building2, run: go("/companies") },
       can("deal.read") && { key: "n-deals", label: "Go to Deals", group: "Navigate", icon: Handshake, run: go("/deals") },
       can("member.read") && { key: "n-team", label: "Go to Team", group: "Navigate", icon: UsersRound, run: go("/settings/team") },
+      can("role.read") && { key: "n-roles", label: "Go to Roles and permissions", group: "Navigate", icon: KeyRound, run: go("/settings/roles") },
       can("audit.read") && { key: "n-audit", label: "Go to Audit log", group: "Navigate", icon: ScrollText, run: go("/settings/audit") },
     ].filter(Boolean) as Item[];
     const make: Item[] = [

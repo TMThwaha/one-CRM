@@ -60,3 +60,10 @@ CSP, validation of RLS on the production Postgres with a non-owner connection ro
 - **Company settings.** A Company Admin (`org.manage`) edits only their own company's profile through `/api/v1/company`; the company comes from the session. The schema drops platform-controlled fields and the tenant database role has no column grant for status, plan, slug, ownership or deletion.
 - **Lifecycle.** Suspended/deactivated/archived companies lose access on the next request. Appointments, status changes, plan/profile edits and deletions are all in the append-only platform audit and mirrored into the company's audit log.
 - **Support access.** There is **no impersonation or support-access mechanism**: the Super Admin cannot open a company workspace at all. The planned logged support-access session (reason, window, visible to the company) is not built.
+
+## Custom roles
+- Only `role.manage` (Company Admin by default; **not** the delegated Admin) can create, edit or delete roles.
+- **No privilege escalation through roles.** A role may only contain permissions its author holds at an equal or broader scope; an author cannot edit or delete a role stronger than themselves; assigning a role is still checked by the existing `assertCanGrantRole` guard. All of this is enforced on the server and tested with hand-made requests, not just hidden in the UI.
+- **Coherence is enforced**: only real permissions, only scopes a permission supports (`own` is offered only where the services enforce it), and a write/delete/convert permission requires its read at least as broad.
+- System roles are immutable. A role cannot be deleted while people or live invitations use it. Every change is audited with a permission diff, and applies on the member's next request (permissions are re-read each request).
+- Tenant isolation holds: another company cannot see, edit or delete a role (404), and role names are per company.

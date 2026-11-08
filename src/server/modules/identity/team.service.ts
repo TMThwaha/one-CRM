@@ -35,7 +35,7 @@ const SCOPE_RANK: Record<Scope, number> = { own: 0, team: 1, all: 2 };
  * Privilege-escalation guard: you can only grant a role whose every permission you already
  * hold at an equal or broader scope. An Admin therefore cannot mint an Owner.
  */
-async function assertCanGrantRole(tx: Tx, ctx: AuthContext, roleId: string) {
+export async function assertCanGrantRole(tx: Tx, ctx: AuthContext, roleId: string) {
   const perms = await tx
     .select({ permission: rolePermissions.permission, scope: rolePermissions.scope })
     .from(rolePermissions)
@@ -85,8 +85,13 @@ export async function listRoles(ctx: AuthContext) {
   return withTenant(ctx, async (tx) => {
     const rs = await tx.select().from(roles).orderBy(asc(roles.name));
     const perms = await tx.select().from(rolePermissions);
+    const counts = await tx
+      .select({ roleId: organizationMembers.roleId, n: sql<number>`count(*)::int` })
+      .from(organizationMembers)
+      .groupBy(organizationMembers.roleId);
     return rs.map((r) => ({
       ...r,
+      memberCount: counts.find((c) => c.roleId === r.id)?.n ?? 0,
       permissions: perms
         .filter((p) => p.roleId === r.id)
         .map((p) => ({ permission: p.permission, scope: p.scope })),

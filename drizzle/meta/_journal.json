@@ -50,6 +50,13 @@
       "when": 1794120790098,
       "tag": "0006_admin_invitation_details",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1794137691029,
+      "tag": "0007_role_manage_permission",
+      "breakpoints": true
     }
   ]
 }

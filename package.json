@@ -12,7 +12,8 @@
     "db:generate": "drizzle-kit generate",
     "db:check": "drizzle-kit check",
     "verify": "npm run typecheck && npm run lint && npm run test && npm run build",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "seed:dev": "tsx --conditions=react-server scripts/seed-dev.ts"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.15",

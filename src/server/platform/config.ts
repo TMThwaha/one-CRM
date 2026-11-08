@@ -22,6 +22,8 @@ const schema = z.object({
    * OFF unless this is explicitly "true" (development and automated tests only).
    */
   ALLOW_PUBLIC_REGISTRATION: z.enum(["true", "false"]).default("false"),
+  /** Self-service registrations allowed per IP per hour. Strict by default; raised only for automated test runs. */
+  REGISTER_RATE_LIMIT_PER_HOUR: z.coerce.number().int().min(1).max(100000).default(10),
   MAIL_FROM: z.string().default("ONECRM <no-reply@localhost>"),
   SESSION_TTL_DAYS: z.coerce.number().int().min(1).max(90).default(14),
 });

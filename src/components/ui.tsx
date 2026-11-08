@@ -288,7 +288,7 @@ export function Modal({
     >
       {open && bare && <div className="max-h-[90vh] overflow-hidden rounded-xl">{children}</div>}
       {open && !bare && (
-        <div className="flex max-h-[90vh] flex-col">
+        <div className={cn("flex flex-col", side ? "h-full" : "max-h-[90vh]")}>
           <header className="flex items-start justify-between gap-4 border-b border-border px-5 py-4">
             <div>
               <h2 className="text-base font-semibold">{title}</h2>

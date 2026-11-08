@@ -68,3 +68,9 @@ The platform lives at `/super-admin`. The company workspace keeps its existing U
 
 ## ADR-021 — Regional settings travel on the request context
 `AuthContext.regional` (time zone, locale, currency, date format) is read in the same query that already joins the organization at sign-in, so every server component and API handler can format for the company at no extra cost; client components read it via `useRegional()`. Formatters take the regional object explicitly instead of reading global state, so concurrent requests for different companies can never format with each other's settings. Bare calendar dates are formatted in UTC so they cannot drift a day.
+
+## ADR-022 — Custom roles are validated by shared rules, enforced on the server
+`src/shared/permissions.ts` defines the catalogue, which permissions support record scope, and which permission depends on which. The editor uses it to stay valid as you click (`setPermission`); the server uses the same `validatePermissionSet` and `covers` and trusts nothing from the client. `role.manage` is a new permission held by the Company Admin only; because system roles are stored per organization, migration 0007 backfills existing companies and `SYSTEM_ROLES` covers new ones. Roles are never edited in place for system roles; "use as template" copies one.
+
+## ADR-023 — Navigation shows built, permitted modules only
+Sections replace the two flat groups. Planned modules are not rendered as disabled links in the company workspace (unlike the platform panel, where the operator benefits from seeing the roadmap): ordinary employees should not face a wall of dead items. The roadmap lives in `IMPLEMENTATION_STATUS.md`. Collapse state is a per-device convenience stored in `localStorage`, and the section holding the current page never collapses.

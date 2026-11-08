@@ -121,7 +121,8 @@ export const deleteCompanySchema = z.object({
 });
 
 export const bootstrapSchema = z.object({
-  token: z.string().min(1, "Setup token is required").max(300),
+  // Trimmed: a pasted token often carries a trailing space or newline.
+  token: z.string().trim().min(1, "Setup token is required").max(300),
   name: text(120).min(2, "Your name is required"),
   email: emailSchema,
   password: passwordSchema,

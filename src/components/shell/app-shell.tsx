@@ -1,7 +1,7 @@
 "use client";
 
 import {
-  Building2, Check, CheckSquare, ChevronsUpDown, Handshake, LayoutDashboard, LogOut, Menu as MenuIcon, Monitor, Moon, Plus,
+  Building2, Check, CheckSquare, ChevronDown, ChevronsUpDown, Handshake, KeyRound, LayoutDashboard, LogOut, Menu as MenuIcon, Monitor, Moon, Plus,
   ScrollText, Search, ShieldCheck, Sun, Target, Users, UsersRound, type LucideIcon,
 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -16,24 +16,69 @@ import { CommandPalette } from "./command-palette";
 import { QuickCreateProvider, useQuickCreate, type CreateKind } from "./quick-create";
 
 interface NavItem { href: string; label: string; icon: LucideIcon; show: boolean }
+interface NavSection { id: string; title: string; items: NavItem[] }
 
-function useNav(): { main: NavItem[]; admin: NavItem[] } {
+/**
+ * Only built modules appear, and only the ones the signed-in person is permitted to use: an employee
+ * with narrow permissions sees a short menu. Sections with nothing visible disappear entirely.
+ * (Planned modules are tracked in docs/IMPLEMENTATION_STATUS.md, not shown as dead links.)
+ */
+function useNav(): NavSection[] {
   const can = useCan();
-  return {
-    main: [
-      { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, show: true },
-      { href: "/tasks", label: "Tasks", icon: CheckSquare, show: can("task.read") },
-      { href: "/leads", label: "Leads", icon: Target, show: can("lead.read") },
-      { href: "/contacts", label: "Contacts", icon: Users, show: can("contact.read") },
-      { href: "/companies", label: "Companies", icon: Building2, show: can("company.read") },
-      { href: "/deals", label: "Deals", icon: Handshake, show: can("deal.read") },
-    ].filter((i) => i.show),
-    admin: [
-      { href: "/settings/company", label: "Company", icon: Building2, show: can("org.manage") },
-      { href: "/settings/team", label: "Team", icon: UsersRound, show: can("member.read") },
-      { href: "/settings/audit", label: "Audit log", icon: ScrollText, show: can("audit.read") },
-    ].filter((i) => i.show),
-  };
+  const sections: NavSection[] = [
+    {
+      id: "workspace", title: "Workspace",
+      items: [
+        { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, show: true },
+        { href: "/tasks", label: "Tasks", icon: CheckSquare, show: can("task.read") },
+      ],
+    },
+    {
+      id: "customers", title: "Customers",
+      items: [
+        { href: "/leads", label: "Leads", icon: Target, show: can("lead.read") },
+        { href: "/contacts", label: "Contacts", icon: Users, show: can("contact.read") },
+        { href: "/companies", label: "Companies", icon: Building2, show: can("company.read") },
+      ],
+    },
+    {
+      id: "sales", title: "Sales",
+      items: [{ href: "/deals", label: "Deals", icon: Handshake, show: can("deal.read") }],
+    },
+    {
+      id: "administration", title: "Administration",
+      items: [
+        { href: "/settings/company", label: "Company", icon: Building2, show: can("org.manage") },
+        { href: "/settings/team", label: "Team", icon: UsersRound, show: can("member.read") },
+        { href: "/settings/roles", label: "Roles and permissions", icon: KeyRound, show: can("role.read") },
+        { href: "/settings/audit", label: "Audit log", icon: ScrollText, show: can("audit.read") },
+      ],
+    },
+  ];
+  return sections.map((s) => ({ ...s, items: s.items.filter((i) => i.show) })).filter((s) => s.items.length > 0);
+}
+
+// Which sections the person collapsed. Per-device convenience only: the page works without storage.
+const NAV_KEY = "onecrm-nav-collapsed";
+const navListeners = new Set<() => void>();
+function readCollapsed(): string {
+  try {
+    return localStorage.getItem(NAV_KEY) ?? "[]";
+  } catch {
+    return "[]";
+  }
+}
+function subscribeNav(cb: () => void) {
+  navListeners.add(cb);
+  return () => { navListeners.delete(cb); };
+}
+function toggleSection(id: string) {
+  try {
+    const set = new Set<string>(JSON.parse(readCollapsed()));
+    if (set.has(id)) set.delete(id); else set.add(id);
+    localStorage.setItem(NAV_KEY, JSON.stringify([...set]));
+  } catch {}
+  navListeners.forEach((l) => l());
 }
 
 /** Minimal accessible popover menu. */
@@ -227,6 +272,31 @@ function NavLink({ item, onNavigate }: { item: NavItem; onNavigate: () => void }
   );
 }
 
+function NavSectionView({ section, onNavigate }: { section: NavSection; onNavigate: () => void }) {
+  const pathname = usePathname();
+  const raw = useSyncExternalStore(subscribeNav, readCollapsed, () => "[]");
+  const hasActive = section.items.some((i) => pathname === i.href || pathname.startsWith(i.href + "/"));
+  let stored = false;
+  try { stored = (JSON.parse(raw) as string[]).includes(section.id); } catch {}
+  const collapsed = stored && !hasActive; // never hide the page you are on
+  return (
+    <div className="mt-4 first:mt-3">
+      <button
+        type="button"
+        onClick={() => toggleSection(section.id)}
+        aria-expanded={!collapsed}
+        className="flex w-full items-center justify-between rounded px-2.5 pb-1 text-[11px] font-semibold tracking-wider text-faint uppercase hover:text-muted"
+      >
+        {section.title}
+        <ChevronDown className={cn("h-3 w-3 transition-transform", collapsed && "-rotate-90")} aria-hidden />
+      </button>
+      <div hidden={collapsed} className="space-y-0.5">
+        {section.items.map((i) => <NavLink key={i.href} item={i} onNavigate={onNavigate} />)}
+      </div>
+    </div>
+  );
+}
+
 function Shell({ children }: { children: ReactNode }) {
   const nav = useNav();
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -244,17 +314,7 @@ function Shell({ children }: { children: ReactNode }) {
     <nav aria-label="Primary" className="flex h-full flex-col gap-1 p-3">
       <div className="px-2 pt-1 pb-3"><Logo /></div>
       <OrgSwitcher />
-      <div className="mt-3 space-y-0.5">
-        {nav.main.map((i) => <NavLink key={i.href} item={i} onNavigate={() => setNavOpen(false)} />)}
-      </div>
-      {nav.admin.length > 0 && (
-        <>
-          <p className="mt-5 px-2.5 pb-1 text-[11px] font-semibold tracking-wider text-faint uppercase">Administration</p>
-          <div className="space-y-0.5">
-            {nav.admin.map((i) => <NavLink key={i.href} item={i} onNavigate={() => setNavOpen(false)} />)}
-          </div>
-        </>
-      )}
+      {nav.map((s) => <NavSectionView key={s.id} section={s} onNavigate={() => setNavOpen(false)} />)}
     </nav>
   );
 

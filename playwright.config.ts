@@ -35,7 +35,7 @@ export default defineConfig({
   webServer: {
     // Production build: deterministic and what actually ships (no HMR, no on-demand compilation).
     command: `npm run build && node node_modules/next/dist/bin/next start -p ${PORT}`,
-    env: { BOOTSTRAP_TOKEN: "e2e-bootstrap-token-0123456789abcdef", ALLOW_PUBLIC_REGISTRATION: "true", ALLOW_EMBEDDED_DB: "true", PGLITE_DIR: dbDir, APP_URL: `http://localhost:${PORT}` },
+    env: { BOOTSTRAP_TOKEN: "e2e-bootstrap-token-0123456789abcdef", ALLOW_PUBLIC_REGISTRATION: "true", REGISTER_RATE_LIMIT_PER_HOUR: "1000", ALLOW_EMBEDDED_DB: "true", PGLITE_DIR: dbDir, APP_URL: `http://localhost:${PORT}` },
     url: `http://localhost:${PORT}/api/v1/health`,
     reuseExistingServer: false,
     timeout: 300_000,

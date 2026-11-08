@@ -27,7 +27,9 @@ Base path `/api/v1`. JSON in/out. Cookie-authenticated (same-origin browser clie
 | `GET /invite/{token}` · `POST /invite/{token}` | public | Preview / accept (`{name?, password}`) |
 | `GET/POST /invitations` · `DELETE /invitations/{id}` | `member.invite` | POST returns the one-time `url` |
 | `GET /members` · `PATCH /members/{id}` | `member.read` / `member.manage` | `{roleKey?, status?}` |
-| `GET /roles` | `role.read` | With permissions |
+| `GET /roles` | `role.read` | With permissions, `isSystem`, `memberCount` |
+| `POST /roles` | `role.manage` | `{name, description?, permissions: {key: "all"|"own"}}`. 422 for unknown keys, unsupported scopes or incoherent sets; 403 if it contains a permission the caller does not hold; 409 duplicate name. 201 |
+| `PATCH /roles/{id}` · `DELETE /roles/{id}` | `role.manage` | Custom roles only (system roles 409). 403 for a role stronger than the caller. DELETE 409 while people or live invitations use it |
 | `GET/POST /contacts` · `GET/PATCH/DELETE /contacts/{id}` · `GET /contacts/{id}/timeline` | `contact.*` | Email unique per org → 409 with `existingContactId` |
 | `GET/POST /companies` · `…/{id}` · `…/{id}/timeline` | `company.*` | |
 | `GET/POST /leads` · `…/{id}` · `…/{id}/timeline` · `POST /leads/{id}/convert` | `lead.*`, `lead.convert` | Convert `{createDeal, dealTitle?, dealAmount?, pipelineId?}` |

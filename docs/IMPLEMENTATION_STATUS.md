@@ -2,7 +2,7 @@
 
 Legend: **Tested** = covered by automated tests that pass. **Implemented** = works end to end but only manually exercised. **Planned** = not built.
 
-Last verified: 2026-11-08 — `npm run verify`: 94 unit/integration tests passed, lint 0 problems, typecheck clean, production build succeeds, `npm audit --omit=dev` 0 vulnerabilities. Playwright (real Chrome, production build, fresh database): 17 tests passed, including axe WCAG 2.1 A/AA scans of every Super Admin page in light and dark mode. GitHub Actions CI is run on every push.
+Last verified: 2026-11-08 — `npm run verify`: 114 unit/integration tests passed, lint 0 problems, typecheck clean, production build succeeds, `npm audit --omit=dev` 0 vulnerabilities. Playwright (real Chrome, production build, fresh database): 21 tests passed, including axe WCAG 2.1 A/AA scans (light and dark) and a phone-width (390px) layout check. Full audit of what exists: [EXISTING_SYSTEM_AUDIT.md](EXISTING_SYSTEM_AUDIT.md).
 
 ## Platform hierarchy (Super Admin → Companies → Company Admin → employees)
 
@@ -33,7 +33,10 @@ Last verified: 2026-11-08 — `npm run verify`: 94 unit/integration tests passed
 | Company membership + multiple companies per person + switching | Tested | Companies are created only by the Super Admin; membership comes from invitations. |
 | Tenant isolation (app layer, RLS, composite FKs) | Tested | See SECURITY_MODEL. |
 | Invitations (create, preview, accept once, revoke) | Tested | **No email is sent** — the inviter copies the link. |
-| Roles & permissions (5 system roles, scopes `all`/`own`) | Tested | Custom roles: not built. `team` scope is enforced as `own`. |
+| Roles & permissions: 5 system roles, record scopes `all`/`own` | Tested | `team` scope is enforced as `own` (teams do not exist yet). |
+| **Custom roles** with a granular permission editor (create, edit, delete, "use as template") | Tested | `role.manage` (Company Admin only). Server enforces: real permissions only, scopes the service honours, "write needs read", nothing the author doesn't hold, no editing a stronger role, system roles immutable, no delete while in use. Changes apply on the member's next request. Audited. Migration 0007 backfills existing companies. |
+| **Scalable navigation**: sections (Workspace, Customers, Sales, Administration), collapsible and remembered, permission-aware, current page never hidden | Tested (browser) | Only built modules are shown; planned ones are not rendered as dead links. Favourites/pinning: Planned. |
+| **Phone-width layout** (390px): 10 pages do not scroll sideways, menu opens as a drawer | Tested (browser) | Previously unverified. |
 | Privilege-escalation guard, last-owner protection, suspension | Tested | |
 | Contacts (CRUD, duplicate prevention, 360 view) | Tested | |
 | Companies (CRUD, domain uniqueness) | Tested | |
@@ -53,6 +56,29 @@ Last verified: 2026-11-08 — `npm run verify`: 94 unit/integration tests passed
 | Notifications | **Planned** | |
 | Playwright E2E, accessibility automation, load tests | **Planned** | |
 | CI pipeline | Tested | `.github/workflows/ci.yml` ran green on GitHub Actions (2026-11-07, Ubuntu, Node 24): typecheck, lint, 58 tests, build, `npm audit --audit-level=high`. Runner pinned to `ubuntu-24.04`. |
+
+## Product scope: module status (21 modules)
+Statuses: Planned · In Progress · Implemented · Tested · Blocked. Per-feature detail is in the tables above; how this was derived is in [EXISTING_SYSTEM_AUDIT.md](EXISTING_SYSTEM_AUDIT.md) §5.
+
+| # | Module | Status |
+|---|---|---|
+| 1 | Identity & organization management | **Tested**: auth, MFA, reset, sessions, invitations, multi-company, platform admin, custom roles & permissions. **Planned**: departments/teams, SSO, org policies |
+| 2 | Personalized dashboard | Implemented (one live dashboard). Planned: per-role views, widgets, saved layouts |
+| 3 | CRM | Tested (contacts, companies, leads, timeline, duplicate prevention). Planned: CSV import, merge UI, tags/custom fields UI, attachments, Customer 360 |
+| 4 | Sales | Tested (pipeline, deals, Kanban, lost reasons). Planned: products, quotes, forecasting, approvals |
+| 5 | Unified communication | Planned |
+| 6 | Marketing automation | Planned |
+| 7 | Customer support | Planned |
+| 8 | Products & finance | Planned |
+| 9 | Tasks, projects, workforce | Tested (tasks). Planned: subtasks, recurrence, calendar, projects |
+| 10 | Visual automation engine | Planned (needs job queue + domain events first) |
+| 11-14 | AI command center, agents, BI, company memory | Planned. **Blocked**: needs an AI provider decision and credentials |
+| 15-16 | Industry templates, no-code customization | Planned |
+| 17 | Analytics & reporting | Planned beyond the dashboard |
+| 18 | Integration ecosystem | Planned |
+| 19 | Customer portal | Planned |
+| 20 | Enterprise administration & security | Partial: audit log, MFA, sessions, rate limiting Tested. Planned: SSO, retention, export, backup |
+| 21 | Mobile & global | Partial: responsive shell Tested at 390px; multi-currency/time zone Tested. Planned: i18n, offline |
 
 ## Phases 2–7
 All **Planned**. Nothing from communication, marketing, support, finance, automation, AI, company memory, industry templates, enterprise SSO, mobile, or integrations exists. Those documents are design intent only.

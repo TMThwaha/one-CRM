@@ -44,3 +44,10 @@ Honest list of what is missing, weak or unverified. Security-relevant items firs
 9. **Deleting a company is a soft delete.** Data is retained; there is no purge or data-export tool.
 10. **Tax fields are labels only.** Nothing is validated, calculated or filed, and no regional compliance is claimed.
 11. **Country catalogue is curated (39 countries)**, not exhaustive; multi-time-zone countries default to one zone.
+
+## Roles and navigation
+1. **Permissions are coarse-grained and per resource.** No field-level permissions, no export or finance permissions (those modules do not exist), and no `team` scope in the editor (teams do not exist; the scope would silently behave as `own`).
+2. A company can have at most **50 custom roles**. Deleting a role also removes its spent (accepted, revoked or expired) invitations, which are already recorded in the audit log.
+3. Navigation shows only built modules and has no favourites/pinning yet.
+4. A person cannot change their own role (an intentional safeguard), so a sole Company Admin cannot test a custom role on themselves; invite or use a second account.
+5. The registration rate limit (default 10 per IP per hour) is configurable via `REGISTER_RATE_LIMIT_PER_HOUR`; it is only raised for automated test runs.

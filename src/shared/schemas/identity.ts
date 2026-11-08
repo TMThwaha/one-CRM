@@ -70,3 +70,11 @@ export const changePasswordSchema = z.object({
   newPassword: passwordSchema,
 });
 export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
+
+export const roleInputSchema = z.object({
+  name: z.string().trim().min(2, "Give the role a name").max(60),
+  description: z.string().trim().max(200).nullish().transform((v) => (v ? v : null)),
+  /** permission key -> "all" | "own"; the server validates keys, scopes and dependencies. */
+  permissions: z.record(z.string(), z.string()),
+});
+export type RoleInput = z.input<typeof roleInputSchema>;
