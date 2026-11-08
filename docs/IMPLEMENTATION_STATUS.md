@@ -2,7 +2,7 @@
 
 Legend: **Tested** = covered by automated tests that pass. **Implemented** = works end to end but only manually exercised. **Planned** = not built.
 
-Last verified: 2026-11-08 — `npm run verify`: 86 unit/integration tests passed, lint 0 problems, typecheck clean, production build succeeds, `npm audit --omit=dev` 0 vulnerabilities. Playwright (real Chrome, production build, fresh database): 17 tests passed, including axe WCAG 2.1 A/AA scans of every Super Admin page in light and dark mode. CI has not yet run on this commit.
+Last verified: 2026-11-08 — `npm run verify`: 86 unit/integration tests passed, lint 0 problems, typecheck clean, production build succeeds, `npm audit --omit=dev` 0 vulnerabilities. Playwright (real Chrome, production build, fresh database): 17 tests passed, including axe WCAG 2.1 A/AA scans of every Super Admin page in light and dark mode. GitHub Actions CI also passed on this commit (typecheck, lint, tests, build, audit).
 
 ## Platform hierarchy (Super Admin → Companies → Company Admin → employees)
 
