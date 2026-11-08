@@ -62,6 +62,29 @@ export const companyProfileSchema = z.object({
   planId: z.string().uuid("Select a subscription plan"),
 });
 
+/**
+ * What a Company Admin may change about their own company. Legal name, country, registration number,
+ * plan and status are intentionally absent: parsing drops them, so they cannot be smuggled in.
+ */
+export const companySettingsSchema = companyProfileSchema.pick({
+  displayName: true,
+  industry: true,
+  website: true,
+  businessEmail: true,
+  businessPhone: true,
+  logoUrl: true,
+  region: true,
+  city: true,
+  address: true,
+  taxId: true,
+  baseCurrency: true,
+  timezone: true,
+  locale: true,
+  dateFormat: true,
+  phoneCountryCode: true,
+});
+export type CompanySettingsInput = z.input<typeof companySettingsSchema>;
+
 export const administratorSchema = z.object({
   name: text(120).min(2, "Administrator name is required"),
   email: emailSchema,

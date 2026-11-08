@@ -12,7 +12,7 @@
 | 7 | Enterprise (SSO, retention, consent, regional), i18n, mobile/offline, marketplace, public API, scale | Planned |
 
 ## Platform hierarchy (built 2026-11-08)
-Super Admin bootstrap and panel, company creation with administrator invitation, company lifecycle, platform audit, tenant-isolation tests across companies. **Next, in order:** Phase 3 company-admin workspace (company profile, departments/teams, custom roles, company settings incl. logo upload and workspace date formatting in the company time zone), then support-access sessions, enforced Super Admin MFA, and plan limits/pricing.
+Super Admin bootstrap and panel, company creation with administrator invitation, company lifecycle, platform audit, tenant-isolation tests across companies. **Next, in order:** Phase 3 remainder (departments/teams, custom roles with granular permissions, logo upload, applying the numeric date-format pattern). Done already: company profile/settings page and company-time-zone/locale formatting, then support-access sessions, enforced Super Admin MFA, and plan limits/pricing.
 
 ## Phase 1 completion gaps (next milestone, "1.1")
 Must-do before treating Phase 1 as production-ready:

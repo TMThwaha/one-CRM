@@ -5,6 +5,7 @@ import { CalendarClock, CircleDot, Mail, MessageSquareText, Phone, type LucideIc
 import Link from "next/link";
 import { Button, EmptyState, Skeleton, cn } from "@/components/ui";
 import { api } from "@/lib/api";
+import { useRegional } from "@/components/session";
 import { formatDateTime, relativeTime } from "@/lib/format";
 
 interface Entry {
@@ -17,6 +18,7 @@ const PLURAL = { contact: "contacts", company: "companies", lead: "leads", deal:
 
 /** One connected timeline: your notes and calls, plus everything the platform recorded. */
 export function Timeline({ kind, id, hideSystem }: { kind: keyof typeof PLURAL; id: string; hideSystem?: boolean }) {
+  const regional = useRegional();
   const q = useInfiniteQuery({
     queryKey: ["timeline", kind, id],
     initialPageParam: undefined as string | undefined,
@@ -45,7 +47,7 @@ export function Timeline({ kind, id, hideSystem }: { kind: keyof typeof PLURAL; 
                 {a.dealId && kind !== "deal" && <Link href={`/deals/${a.dealId}`} className="text-xs text-accent hover:underline">deal</Link>}
               </div>
               {a.body && <p className="mt-1 text-sm whitespace-pre-wrap text-muted">{a.body}</p>}
-              <p className="mt-0.5 text-xs text-faint" title={formatDateTime(a.occurredAt)}>
+              <p className="mt-0.5 text-xs text-faint" title={formatDateTime(a.occurredAt, regional)}>
                 {system ? "System" : a.authorName ?? "Someone"}
                 {a.type === "call" || a.type === "meeting" ? ` · ${a.type}${a.durationMinutes ? ` ${a.durationMinutes} min` : ""}` : ""} · {relativeTime(a.occurredAt)}
               </p>

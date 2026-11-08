@@ -2,7 +2,12 @@
  * Display-only formatting. Amounts are stored and transported as exact decimal strings; they are
  * converted to a JS number ONLY here, for presentation, never for arithmetic that is saved.
  */
-export function formatMoney(amount: string | number, currency: string, locale = "en-IN"): string {
+export interface Regional { timeZone?: string; locale?: string }
+
+/** A bare calendar date (YYYY-MM-DD) has no time zone: never shift it into one. */
+const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
+
+export function formatMoney(amount: string | number, currency: string, locale?: string): string {
   const n = typeof amount === "string" ? Number(amount) : amount;
   try {
     return new Intl.NumberFormat(locale, { style: "currency", currency, maximumFractionDigits: n % 1 === 0 ? 0 : 2 }).format(n);
@@ -11,7 +16,7 @@ export function formatMoney(amount: string | number, currency: string, locale = 
   }
 }
 
-export function formatCompactMoney(amount: string | number, currency: string, locale = "en-IN"): string {
+export function formatCompactMoney(amount: string | number, currency: string, locale?: string): string {
   const n = typeof amount === "string" ? Number(amount) : amount;
   try {
     return new Intl.NumberFormat(locale, { style: "currency", currency, notation: "compact", maximumFractionDigits: 1 }).format(n);
@@ -20,14 +25,29 @@ export function formatCompactMoney(amount: string | number, currency: string, lo
   }
 }
 
-export function formatDate(d: string | Date | null | undefined, opts: Intl.DateTimeFormatOptions = { day: "numeric", month: "short", year: "numeric" }): string {
+/** Instants are stored in UTC and shown in the company's time zone and locale when given. */
+export function formatDate(
+  d: string | Date | null | undefined,
+  opts: Intl.DateTimeFormatOptions = { day: "numeric", month: "short", year: "numeric" },
+  regional: Regional = {},
+): string {
   if (!d) return "—";
-  return new Intl.DateTimeFormat(undefined, opts).format(new Date(d));
+  const timeZone = typeof d === "string" && DATE_ONLY.test(d) ? "UTC" : regional.timeZone;
+  return new Intl.DateTimeFormat(regional.locale, { ...opts, ...(timeZone ? { timeZone } : {}) }).format(new Date(d));
 }
 
-export function formatDateTime(d: string | Date | null | undefined): string {
+export function formatDateTime(d: string | Date | null | undefined, regional: Regional = {}): string {
   if (!d) return "—";
-  return new Intl.DateTimeFormat(undefined, { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }).format(new Date(d));
+  return new Intl.DateTimeFormat(regional.locale, {
+    day: "numeric", month: "short", hour: "numeric", minute: "2-digit",
+    ...(regional.timeZone ? { timeZone: regional.timeZone } : {}),
+  }).format(new Date(d));
+}
+
+/** Hour of day (0-23) in a time zone: "good morning" must follow the company's clock, not the server's. */
+export function hourIn(timeZone: string | undefined, now = new Date()): number {
+  const h = new Intl.DateTimeFormat("en-GB", { hour: "numeric", hour12: false, ...(timeZone ? { timeZone } : {}) }).format(now);
+  return Number(h) % 24;
 }
 
 const UNITS: [Intl.RelativeTimeFormatUnit, number][] = [

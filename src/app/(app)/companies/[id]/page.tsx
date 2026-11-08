@@ -58,7 +58,7 @@ export default async function CompanyPage({ params }: PageProps<"/companies/[id]
                 {c.deals.map((d) => (
                   <li key={d.id} className="flex items-center justify-between gap-3 px-4 py-2.5">
                     <div className="min-w-0"><Link href={`/deals/${d.id}`} className="block truncate font-medium hover:underline">{d.title}</Link><p className="text-xs text-muted">{d.stageName}</p></div>
-                    <span className="text-sm tabular">{formatMoney(d.amount, d.currency)}</span>
+                    <span className="text-sm tabular">{formatMoney(d.amount, d.currency, ctx.regional.locale)}</span>
                   </li>
                 ))}
               </ul>

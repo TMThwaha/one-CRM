@@ -59,7 +59,7 @@ export default async function ContactPage({ params }: PageProps<"/contacts/[id]"
                       <Link href={`/deals/${d.id}`} className="block truncate font-medium hover:underline">{d.title}</Link>
                       <p className="text-xs text-muted">{d.stageName}{d.role ? ` · ${d.role}` : ""}</p>
                     </div>
-                    <span className="text-sm tabular">{formatMoney(d.amount, d.currency)}</span>
+                    <span className="text-sm tabular">{formatMoney(d.amount, d.currency, ctx.regional.locale)}</span>
                   </li>
                 ))}
               </ul>

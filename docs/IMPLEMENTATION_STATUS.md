@@ -2,7 +2,7 @@
 
 Legend: **Tested** = covered by automated tests that pass. **Implemented** = works end to end but only manually exercised. **Planned** = not built.
 
-Last verified: 2026-11-08 — `npm run verify`: 86 unit/integration tests passed, lint 0 problems, typecheck clean, production build succeeds, `npm audit --omit=dev` 0 vulnerabilities. Playwright (real Chrome, production build, fresh database): 17 tests passed, including axe WCAG 2.1 A/AA scans of every Super Admin page in light and dark mode. GitHub Actions CI also passed on this commit (typecheck, lint, tests, build, audit).
+Last verified: 2026-11-08 — `npm run verify`: 94 unit/integration tests passed, lint 0 problems, typecheck clean, production build succeeds, `npm audit --omit=dev` 0 vulnerabilities. Playwright (real Chrome, production build, fresh database): 17 tests passed, including axe WCAG 2.1 A/AA scans of every Super Admin page in light and dark mode. GitHub Actions CI is run on every push.
 
 ## Platform hierarchy (Super Admin → Companies → Company Admin → employees)
 
@@ -17,7 +17,9 @@ Last verified: 2026-11-08 — `npm run verify`: 86 unit/integration tests passed
 | Activate / suspend / deactivate / archive / protected delete | Tested | Access ends on the next request; reason required and audited. |
 | Platform overview (live aggregates), users, administrators, countries, plans (read-only) | Tested (data) / Implemented (UI) | No revenue shown: billing is not integrated. |
 | Platform audit log (append-only) + mirror into company audit | Tested | |
-| Country/currency/time-zone defaults per company | Tested (storage, validation, defaults) | Workspace date display still uses the browser zone (see KNOWN_LIMITATIONS). |
+| Country/currency/time-zone defaults per company | Tested | Pre-filled from a 39-country catalogue, overridable per company. |
+| Company settings (Company Admin): profile, logo URL, currency, time zone, language | Tested | `org.manage` only; audited; platform-controlled fields (legal name, country, registration number, plan, status) cannot be changed, enforced by the schema and by column grants. |
+| Workspace uses the company's time zone and locale for dates and money | Tested (formatters, context) / Implemented (UI) | Fixed a hard-coded `en-IN` money locale that applied to every company. Numeric date *pattern* is stored but not yet applied. |
 | Super Admin MFA | Implemented | Available; not enforced. |
 | Support-access sessions, plan limits/pricing, usage, AI settings, integrations, announcements, system health | **Planned** | |
 

@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { DealModal } from "@/components/forms";
 import { DataTable, ListEmpty, SearchBox, useList, type Column } from "@/components/list-kit";
-import { useCan, useSession } from "@/components/session";
+import { useCan, useRegional, useSession } from "@/components/session";
 import { Badge, Button, ErrorNote, Field, Input, Modal, PageHeader, Select, Skeleton, cn, useToast } from "@/components/ui";
 import { ApiError, api, post } from "@/lib/api";
 import { formatDate, formatMoney, sumDecimal } from "@/lib/format";
@@ -20,10 +20,10 @@ interface Board {
   stages: { id: string; name: string; kind: "open" | "won" | "lost"; probability: number; deals: BoardDeal[] }[];
 }
 
-function totals(deals: BoardDeal[]) {
+function totals(deals: BoardDeal[], locale: string) {
   const byCur = new Map<string, string[]>();
   for (const d of deals) byCur.set(d.currency, [...(byCur.get(d.currency) ?? []), d.amount]);
-  return [...byCur].map(([cur, vals]) => formatMoney(sumDecimal(vals), cur)).join(" + ");
+  return [...byCur].map(([cur, vals]) => formatMoney(sumDecimal(vals), cur, locale)).join(" + ");
 }
 
 export function DealsView() {
@@ -50,6 +50,7 @@ export function DealsView() {
 
 function BoardView({ onCreate }: { onCreate: () => void }) {
   const can = useCan();
+  const regional = useRegional();
   const qc = useQueryClient();
   const toast = useToast();
   const [dragging, setDragging] = useState<string | null>(null);
@@ -103,7 +104,7 @@ function BoardView({ onCreate }: { onCreate: () => void }) {
                 <h2 className="text-sm font-semibold">{stage.name}</h2>
                 <Badge tone={stage.kind === "won" ? "success" : stage.kind === "lost" ? "danger" : "neutral"}>{stage.deals.length}</Badge>
               </div>
-              <p className="mt-0.5 text-xs text-muted tabular">{stage.deals.length ? totals(stage.deals) : "—"}</p>
+              <p className="mt-0.5 text-xs text-muted tabular">{stage.deals.length ? totals(stage.deals, regional.locale) : "—"}</p>
             </header>
             <ul className="flex min-h-16 flex-col gap-2 p-2">
               {stage.deals.map((d) => (
@@ -115,8 +116,8 @@ function BoardView({ onCreate }: { onCreate: () => void }) {
                   <Link href={`/deals/${d.id}`} className="block text-sm font-medium hover:text-accent hover:underline">{d.title}</Link>
                   <p className="mt-0.5 truncate text-xs text-muted">{d.companyName ?? "No company"}</p>
                   <div className="mt-2 flex items-center justify-between text-xs">
-                    <span className="font-medium tabular">{formatMoney(d.amount, d.currency)}</span>
-                    <span className="text-faint">{d.expectedCloseDate ? formatDate(d.expectedCloseDate, { day: "numeric", month: "short" }) : ""}</span>
+                    <span className="font-medium tabular">{formatMoney(d.amount, d.currency, regional.locale)}</span>
+                    <span className="text-faint">{d.expectedCloseDate ? formatDate(d.expectedCloseDate, { day: "numeric", month: "short" }, regional) : ""}</span>
                   </div>
                   {can("deal.write") && (
                     <label className="mt-2 block">
@@ -156,16 +157,17 @@ interface Row { id: string; title: string; amount: string; currency: string; sta
 
 function ListView({ onCreate }: { onCreate: () => void }) {
   const can = useCan();
+  const regional = useRegional();
   const { user } = useSession();
   const [status, setStatus] = useState("");
   const [mine, setMine] = useState(false);
   const { q, setQ, page, setPage, pageSize, query } = useList<Row>("deals", "/deals", { ...(status ? { status } : {}), ...(mine ? { ownerId: user.id } : {}) });
   const columns: Column<Row>[] = [
     { header: "Deal", cell: (d) => <div><Link href={`/deals/${d.id}`} className="font-medium hover:text-accent hover:underline">{d.title}</Link><p className="text-xs text-muted">{d.companyName ?? "No company"}</p></div> },
-    { header: "Amount", className: "tabular whitespace-nowrap", cell: (d) => formatMoney(d.amount, d.currency) },
+    { header: "Amount", className: "tabular whitespace-nowrap", cell: (d) => formatMoney(d.amount, d.currency, regional.locale) },
     { header: "Stage", cell: (d) => <Badge tone={d.status === "won" ? "success" : d.status === "lost" ? "danger" : "accent"}>{d.stageName}</Badge> },
     { header: "Owner", hideBelow: "md", cell: (d) => d.ownerName ?? "—" },
-    { header: "Close", hideBelow: "sm", className: "text-muted whitespace-nowrap", cell: (d) => formatDate(d.expectedCloseDate, { day: "numeric", month: "short", year: "numeric" }) },
+    { header: "Close", hideBelow: "sm", className: "text-muted whitespace-nowrap", cell: (d) => formatDate(d.expectedCloseDate, { day: "numeric", month: "short", year: "numeric" }, regional) },
   ];
   return (
     <>

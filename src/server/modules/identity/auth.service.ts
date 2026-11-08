@@ -389,6 +389,10 @@ export async function resolveAuthContext(
         roleId: roles.id,
         roleKey: roles.key,
         roleName: roles.name,
+        timeZone: organizations.timezone,
+        locale: organizations.locale,
+        currency: organizations.baseCurrency,
+        dateFormat: organizations.dateFormat,
       })
       .from(organizationMembers)
       .innerJoin(roles, eq(roles.id, organizationMembers.roleId))
@@ -454,6 +458,12 @@ export async function resolveAuthContext(
     roleName: membership.roleName,
     sessionId: row.session.id,
     permissions,
+    regional: {
+      timeZone: membership.timeZone,
+      locale: membership.locale,
+      currency: membership.currency.trim(),
+      dateFormat: membership.dateFormat,
+    },
     ip: meta.ip ?? null,
   };
 }

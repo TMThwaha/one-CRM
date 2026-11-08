@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { TaskModal } from "@/components/forms";
 import { ListEmpty, SearchBox, useList } from "@/components/list-kit";
-import { useCan, useSession } from "@/components/session";
+import { useCan, useRegional, useSession } from "@/components/session";
 import { Badge, Button, Panel, PageHeader, Skeleton, cn, useToast } from "@/components/ui";
 import { TaskCheck } from "@/components/task-check";
 import { ApiError, del } from "@/lib/api";
@@ -27,6 +27,7 @@ const FILTERS = [
 ] as const;
 
 export function TasksView() {
+  const regional = useRegional();
   const can = useCan();
   const { user } = useSession();
   const qc = useQueryClient();
@@ -87,7 +88,7 @@ export function TasksView() {
                 </div>
                 {(t.priority === "urgent" || t.priority === "high") && t.status === "open" && <Badge tone={t.priority === "urgent" ? "danger" : "warning"}>{t.priority}</Badge>}
                 <span className={cn("hidden w-36 text-right text-xs tabular sm:block", isOverdue(t.dueAt, t.status) ? "font-medium text-danger" : "text-muted")}>
-                  {t.dueAt ? formatDateTime(t.dueAt) : "No due date"}
+                  {t.dueAt ? formatDateTime(t.dueAt, regional) : "No due date"}
                 </span>
                 {can("task.delete") && (
                   <Button size="icon" variant="ghost" aria-label={`Delete task ${t.title}`} onClick={() => remove.mutate(t.id)}><Trash2 className="h-4 w-4" /></Button>

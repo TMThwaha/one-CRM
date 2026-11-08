@@ -37,10 +37,10 @@ Honest list of what is missing, weak or unverified. Security-relevant items firs
 2. **Only one way to get a Super Admin.** The one-time `/setup`. There is no UI to add a second Super Admin, rotate, or recover one who lost both password and second factor (recovery means operator access to the database).
 3. **Super Admin MFA is encouraged, not required.**
 4. **Plans are names only.** No pricing, employee/storage limits, module entitlements, trials or payments exist, and **no plan limit is enforced**. Plan creation/editing UI is not built.
-5. **Company timezone/currency/date format are stored and validated, but the workspace still formats dates in the viewer's browser time zone.** Platform pages show UTC. Money already uses each record's currency.
-6. **Company logo is a URL**, not an upload (no file storage exists). The logo is stored but not yet shown in the workspace.
+5. **Date format pattern is stored but not applied.** The workspace now shows dates, times and money in the company's time zone and locale (month-name style from the language setting), but the company's `dateFormat` pattern (e.g. `dd/MM/yyyy`) is not used because no screen displays purely numeric dates yet. Platform pages show UTC. Date-only fields (e.g. expected close date) are never shifted between zones.
+6. **Company logo is a URL**, not an upload (no file storage exists). It must be an `https://` address; the workspace sidebar shows it (no referrer is sent). The image is fetched from the company's own host, so a company can point it at any https image.
 7. **Platform pages not yet built:** usage, global AI settings, integration management, announcements, system health, platform settings (shown as "Not built yet" in the sidebar), and platform-wide user actions (disable a user).
-8. **Company profile editing by the Company Admin, departments/teams, custom roles** are Phase 3 and not built; the Company Admin cannot yet edit the company profile from their workspace.
+8. **Departments/teams and custom roles** are not built (Phase 3). A Company Admin can edit their company's profile and regional settings (**Settings → Company**) but not its legal name, country, registration number, plan or status; those are platform-controlled.
 9. **Deleting a company is a soft delete.** Data is retained; there is no purge or data-export tool.
 10. **Tax fields are labels only.** Nothing is validated, calculated or filed, and no regional compliance is claimed.
 11. **Country catalogue is curated (39 countries)**, not exhaustive; multi-time-zone countries default to one zone.

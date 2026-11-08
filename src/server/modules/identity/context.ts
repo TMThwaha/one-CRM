@@ -15,7 +15,16 @@ export interface AuthContext {
   roleName: string;
   sessionId: string;
   permissions: PermissionMap;
+  /** The company's own regional settings, used to format dates and money for its users. */
+  regional: Regional;
   ip?: string | null;
+}
+
+export interface Regional {
+  timeZone: string;
+  locale: string;
+  currency: string;
+  dateFormat: string;
 }
 
 /**

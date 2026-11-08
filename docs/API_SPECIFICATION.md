@@ -56,6 +56,12 @@ Authorised **only** by the platform resolver. A company session, including a Com
 | `POST /platform/companies/{id}/delete` | `{confirmName, password}`; archived companies only; soft delete |
 | `GET /platform/plans` | Plan catalogue |
 
+### Company settings (Company Admin, `org.manage`)
+| Method & path | Notes |
+|---|---|
+| `GET /company` | The caller's own company profile and regional settings (the company always comes from the session) |
+| `PATCH /company` | Display name, industry, website, contact details, logo URL (https only), region/city/address, tax id, currency, time zone, language, date format, phone code. Legal name, country, registration number, plan and status are ignored. Audited as `company.profile_updated` |
+
 ### Personal account endpoints (any signed-in person, company user or Super Admin)
 `GET/POST /me/mfa`, `POST /me/mfa/enable`, `POST /me/mfa/disable`, `POST /me/password`, `DELETE /me/sessions/{id}`, `POST /me/verification`.
 

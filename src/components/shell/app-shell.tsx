@@ -29,6 +29,7 @@ function useNav(): { main: NavItem[]; admin: NavItem[] } {
       { href: "/deals", label: "Deals", icon: Handshake, show: can("deal.read") },
     ].filter((i) => i.show),
     admin: [
+      { href: "/settings/company", label: "Company", icon: Building2, show: can("org.manage") },
       { href: "/settings/team", label: "Team", icon: UsersRound, show: can("member.read") },
       { href: "/settings/audit", label: "Audit log", icon: ScrollText, show: can("audit.read") },
     ].filter((i) => i.show),
@@ -153,7 +154,13 @@ function OrgSwitcher() {
   return (
     <Popover align="left" trigger={
       <span className="flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-left hover:bg-hover">
-        <Avatar name={organization.name} size={28} />
+        {organization.logoUrl ? (
+          // Admin-supplied https address, decorative (the company name sits beside it); no referrer is sent.
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={organization.logoUrl} alt="" width={28} height={28} referrerPolicy="no-referrer" className="h-7 w-7 shrink-0 rounded-md object-contain" />
+        ) : (
+          <Avatar name={organization.name} size={28} />
+        )}
         <span className="min-w-0 flex-1">
           <span className="block truncate text-sm font-medium">{organization.name}</span>
           <span className="block truncate text-xs text-faint">{role.name}</span>

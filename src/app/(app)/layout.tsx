@@ -10,7 +10,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     <AppShell
       session={{
         user: { id: ctx.userId, name: ctx.userName, email: ctx.userEmail },
-        organization: org,
+        organization: { ...org, baseCurrency: org.baseCurrency.trim() },
+        regional: ctx.regional,
         role: { key: ctx.roleKey, name: ctx.roleName },
         permissions: ctx.permissions,
         organizations: orgs.map((o) => ({ id: o.id, name: o.name, roleName: o.roleName })),

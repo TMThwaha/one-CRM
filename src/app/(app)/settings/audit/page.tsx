@@ -32,7 +32,7 @@ export default async function AuditPage({ searchParams }: PageProps<"/settings/a
                 <Badge className="font-mono">{e.action}</Badge>
                 <span className="min-w-0 flex-1 truncate text-sm">{e.summary ?? Object.keys(e.changes as object).join(", ")}</span>
                 <span className="text-xs text-muted">{e.actorName ?? "System"}</span>
-                <time className="w-32 text-right text-xs text-faint tabular" dateTime={e.createdAt.toISOString()}>{formatDateTime(e.createdAt)}</time>
+                <time className="w-32 text-right text-xs text-faint tabular" dateTime={e.createdAt.toISOString()}>{formatDateTime(e.createdAt, ctx.regional)}</time>
               </li>
             ))}
           </ul>

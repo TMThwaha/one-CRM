@@ -30,12 +30,12 @@ export default async function DealPage({ params }: PageProps<"/deals/[id]">) {
           <p className="text-[13px] text-muted"><Link href="/deals" className="hover:underline">Deals</Link></p>
           <h1 className="mt-1 text-2xl font-semibold tracking-tight">{d.title}</h1>
           <div className="mt-2 flex flex-wrap items-center gap-3 text-sm">
-            <span className="text-xl font-semibold tabular">{formatMoney(d.amount, d.currency)}</span>
+            <span className="text-xl font-semibold tabular">{formatMoney(d.amount, d.currency, ctx.regional.locale)}</span>
             <Badge tone={d.status === "won" ? "success" : d.status === "lost" ? "danger" : "accent"}>{d.status}</Badge>
             <span className="text-muted">{d.probability}% likely</span>
             {d.companyId && <Link href={`/companies/${d.companyId}`} className="text-muted hover:underline">{d.companyName}</Link>}
             <span className="text-muted">Owner: {d.ownerName ?? "Unassigned"}</span>
-            {d.expectedCloseDate && <span className="text-muted">Close: {formatDate(d.expectedCloseDate)}</span>}
+            {d.expectedCloseDate && <span className="text-muted">Close: {formatDate(d.expectedCloseDate, undefined, ctx.regional)}</span>}
           </div>
           {d.lostReason && <p className="mt-2 text-sm text-danger">Lost: {d.lostReason}</p>}
         </div>

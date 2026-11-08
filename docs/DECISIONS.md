@@ -65,3 +65,6 @@ The platform lives at `/super-admin`. The company workspace keeps its existing U
 
 ## ADR-020 — Regional settings are stored per company; the catalogue only supplies defaults
 `src/shared/countries.ts` pre-fills currency, time zone, language, date format and phone code when a company is created; the company stores its own values and can change each. Tax identifiers are labels only. Timestamps are UTC.
+
+## ADR-021 — Regional settings travel on the request context
+`AuthContext.regional` (time zone, locale, currency, date format) is read in the same query that already joins the organization at sign-in, so every server component and API handler can format for the company at no extra cost; client components read it via `useRegional()`. Formatters take the regional object explicitly instead of reading global state, so concurrent requests for different companies can never format with each other's settings. Bare calendar dates are formatted in UTC so they cannot drift a day.

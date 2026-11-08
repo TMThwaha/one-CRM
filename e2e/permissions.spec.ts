@@ -83,7 +83,7 @@ test.describe("accessibility (axe, WCAG 2.1 A/AA rules)", () => {
       await page.getByLabel("Email").fill(`${uniq("axe")}@e2e.test`);
       await page.getByRole("button", { name: "Create contact" }).click();
       await expect(page.getByText("Contact created").first()).toBeVisible();
-      for (const url of ["/dashboard", "/contacts", "/companies", "/leads", "/deals", "/tasks", "/settings/team", "/settings/audit"]) {
+      for (const url of ["/dashboard", "/contacts", "/companies", "/leads", "/deals", "/tasks", "/settings/team", "/settings/company", "/settings/audit"]) {
         await page.goto(url);
         await page.locator("body[data-hydrated=true]").waitFor();
         await page.waitForLoadState("networkidle");

@@ -2,15 +2,15 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Badge, EmptyState, Panel } from "@/components/ui";
 import { TaskCheck } from "@/components/task-check";
-import { formatCompactMoney, formatDate, fullName, isOverdue, relativeTime } from "@/lib/format";
+import { formatCompactMoney, formatDate, fullName, hourIn, isOverdue, relativeTime } from "@/lib/format";
 import { requireAuth } from "@/server/http/session";
 import { getDashboard } from "@/server/modules/platform/dashboard.service";
 import { getOrganizationBasics } from "@/server/modules/identity/org.service";
 
 export const metadata: Metadata = { title: "Dashboard" };
 
-function greeting() {
-  const h = new Date().getHours();
+function greeting(timeZone: string) {
+  const h = hourIn(timeZone);
   return h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
 }
 
@@ -36,10 +36,10 @@ export default async function DashboardPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-xl font-semibold tracking-tight">
-          {greeting()}, {ctx.userName.split(" ")[0]}
+          {greeting(ctx.regional.timeZone)}, {ctx.userName.split(" ")[0]}
         </h1>
         <p className="mt-0.5 text-sm text-muted">
-          {formatDate(new Date(), { weekday: "long", day: "numeric", month: "long" })} · {org.name}
+          {formatDate(new Date(), { weekday: "long", day: "numeric", month: "long" }, ctx.regional)} · {org.name}
         </p>
       </div>
 
@@ -56,14 +56,14 @@ export default async function DashboardPage() {
         {hasDeals && (
           <Tile
             label="Open pipeline"
-            value={d.pipeline.length === 0 ? "—" : d.pipeline.map((p) => <div key={p.currency}>{formatCompactMoney(p.openAmount, p.currency)}</div>)}
-            sub={d.pipeline.length === 0 ? "No open deals" : d.pipeline.map((p) => `${p.openCount} deals · weighted ${formatCompactMoney(p.weightedAmount, p.currency)}`).join(" | ")}
+            value={d.pipeline.length === 0 ? "—" : d.pipeline.map((p) => <div key={p.currency}>{formatCompactMoney(p.openAmount, p.currency, ctx.regional.locale)}</div>)}
+            sub={d.pipeline.length === 0 ? "No open deals" : d.pipeline.map((p) => `${p.openCount} deals · weighted ${formatCompactMoney(p.weightedAmount, p.currency, ctx.regional.locale)}`).join(" | ")}
           />
         )}
         {hasDeals && (
           <Tile
             label="Won this month"
-            value={d.wonThisMonth.length === 0 ? "—" : d.wonThisMonth.map((p) => <div key={p.currency}>{formatCompactMoney(p.amount, p.currency)}</div>)}
+            value={d.wonThisMonth.length === 0 ? "—" : d.wonThisMonth.map((p) => <div key={p.currency}>{formatCompactMoney(p.amount, p.currency, ctx.regional.locale)}</div>)}
             sub={d.wonThisMonth.length === 0 ? "No deals closed yet" : d.wonThisMonth.map((p) => `${p.count} deals`).join(" | ")}
           />
         )}
@@ -126,7 +126,7 @@ export default async function DashboardPage() {
                       <li key={s.stageId + s.currency}>
                         <div className="mb-1 flex justify-between text-[13px]">
                           <span>{s.stageName} <span className="text-faint">· {s.count}</span></span>
-                          <span className="tabular text-muted">{formatCompactMoney(s.amount, s.currency)}</span>
+                          <span className="tabular text-muted">{formatCompactMoney(s.amount, s.currency, ctx.regional.locale)}</span>
                         </div>
                         <div className="h-2 rounded-full bg-surface-2">
                           <div className="h-2 rounded-full bg-accent" style={{ width: `${Math.max(3, (Number(s.amount) / stageMax) * 100)}%` }} />
@@ -145,7 +145,7 @@ export default async function DashboardPage() {
                 {d.closingSoon.map((x) => (
                   <li key={x.id} className="flex items-center justify-between gap-3 px-4 py-2.5">
                     <Link href={`/deals/${x.id}`} className="truncate hover:underline">{x.title}</Link>
-                    <span className="shrink-0 text-xs text-muted tabular">{formatCompactMoney(x.amount, x.currency)} · {formatDate(x.expectedCloseDate, { day: "numeric", month: "short" })}</span>
+                    <span className="shrink-0 text-xs text-muted tabular">{formatCompactMoney(x.amount, x.currency, ctx.regional.locale)} · {formatDate(x.expectedCloseDate, { day: "numeric", month: "short" }, ctx.regional)}</span>
                   </li>
                 ))}
               </ul>

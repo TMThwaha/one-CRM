@@ -110,6 +110,16 @@ test("the Company Admin accepts, lands in their own workspace and cannot reach t
   await page.getByRole("button", { name: "Join workspace" }).click();
   await expect(page).toHaveURL(/\/dashboard/);
 
+  // The administrator manages their own company profile; platform-controlled identity is read-only.
+  await page.goto("/settings/company");
+  await page.locator("body[data-hydrated=true]").waitFor();
+  await expect(page.getByText(`${COMPANY} LLC`)).toBeVisible();
+  await page.getByLabel("City").fill("Abu Dhabi");
+  await page.getByRole("button", { name: "Save changes" }).click();
+  await expect(page.getByText("Company settings saved").first()).toBeVisible();
+  await page.reload();
+  await expect(page.getByLabel("City")).toHaveValue("Abu Dhabi");
+
   const platform = await page.goto("/super-admin");
   expect(platform?.status()).toBe(404);
   const api = await page.request.get("/api/v1/platform/companies");
