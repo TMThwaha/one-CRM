@@ -24,6 +24,12 @@ const schema = z.object({
   ALLOW_PUBLIC_REGISTRATION: z.enum(["true", "false"]).default("false"),
   /** Self-service registrations allowed per IP per hour. Strict by default; raised only for automated test runs. */
   REGISTER_RATE_LIMIT_PER_HOUR: z.coerce.number().int().min(1).max(100000).default(10),
+  /** Background worker inside the web process. "off" when a separate scheduler calls /api/internal/jobs/drain. */
+  JOBS_WORKER: z.enum(["on", "off"]).default("on"),
+  JOBS_POLL_MS: z.coerce.number().int().min(100).max(60000).default(2000),
+  JOBS_CONCURRENCY: z.coerce.number().int().min(1).max(32).default(4),
+  /** Bearer secret for POST /api/internal/jobs/drain. Unset = that endpoint does not exist (404). */
+  CRON_SECRET: z.string().min(24, "CRON_SECRET must be at least 24 characters").optional(),
   MAIL_FROM: z.string().default("ONECRM <no-reply@localhost>"),
   SESSION_TTL_DAYS: z.coerce.number().int().min(1).max(90).default(14),
 });

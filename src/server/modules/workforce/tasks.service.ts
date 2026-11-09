@@ -3,6 +3,7 @@ import { and, asc, desc, eq, ilike, isNull, lt, gte, sql } from "drizzle-orm";
 import { companies, contacts, deals, tasks, users } from "@/server/db/schema";
 import { withTenant } from "@/server/db/tenant";
 import { audit } from "@/server/platform/audit";
+import { emit } from "@/server/jobs/emit";
 import { conflict, invalid, notFound } from "@/server/platform/errors";
 import { isOwnOnly, require as requirePerm, type AuthContext } from "@/server/modules/identity/context";
 import { assertVersion, diff, isForeignKeyViolation, likePattern } from "@/server/modules/_shared/helpers";
@@ -98,6 +99,11 @@ export async function createTask(ctx: AuthContext, input: TaskInput) {
         })
         .returning();
       await audit(tx, ctx, { action: "task.created", entityType: "task", entityId: row.id, summary: row.title });
+      await emit(tx, ctx, { type: "task.created", entityType: "task", entityId: row.id });
+      // Telling someone about work they gave themselves is noise.
+      if (row.assigneeId && row.assigneeId !== ctx.userId) {
+        await emit(tx, ctx, { type: "task.assigned", entityType: "task", entityId: row.id, payload: { assigneeId: row.assigneeId, title: row.title } });
+      }
       return row;
     });
   } catch (e) {
@@ -148,6 +154,12 @@ export async function updateTask(ctx: AuthContext, id: string, input: unknown) {
         }
       }
       await audit(tx, ctx, { action: status && status !== before.status ? `task.${status === "done" ? "completed" : "reopened"}` : "task.updated", entityType: "task", entityId: id, changes: diff(before, patch) });
+      if (status === "done" && before.status !== "done") {
+        await emit(tx, ctx, { type: "task.completed", entityType: "task", entityId: id });
+      }
+      if (row.assigneeId && row.assigneeId !== before.assigneeId && row.assigneeId !== ctx.userId) {
+        await emit(tx, ctx, { type: "task.assigned", entityType: "task", entityId: id, payload: { assigneeId: row.assigneeId, title: row.title } });
+      }
       return row;
     });
   } catch (e) {

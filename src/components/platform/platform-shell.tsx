@@ -1,7 +1,7 @@
 "use client";
 
 import {
-  Activity, BarChart3, Bell, Bot, Building2, CreditCard, Globe2, LayoutDashboard, LogOut, Menu as MenuIcon, Plug,
+  Activity, BarChart3, Bell, Bot, Building2, CreditCard, Cog, Globe2, LayoutDashboard, LogOut, Menu as MenuIcon, Plug,
   Plus, ScrollText, Settings, ShieldCheck, UserCog, Users, type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
@@ -23,6 +23,7 @@ const NAV: NavItem[] = [
   { href: "/super-admin/countries", label: "Countries and Regions", icon: Globe2 },
   { href: "/super-admin/plans", label: "Subscriptions and Plans", icon: CreditCard },
   { href: "/super-admin/audit", label: "Audit Logs", icon: ScrollText },
+  { href: "/super-admin/jobs", label: "Background Jobs", icon: Cog },
   { href: "/super-admin/security", label: "Security", icon: ShieldCheck },
 ];
 

@@ -49,6 +49,10 @@ Sign in at `/login` with the email `admin@nexoratech.test` (people sign in by em
 | `npm run verify` | All of the above, in order |
 | `npm run db:generate` | Generate a SQL migration from schema changes (`drizzle/`) |
 
+### Background worker
+
+Events, email retries, notifications and housekeeping run as background jobs. The worker starts with the server (`instrumentation.ts`) and needs no extra process. Watch it at **Super Admin → Background jobs**. On a host that cannot keep a process alive, set `JOBS_WORKER=off`, set `CRON_SECRET`, and have a scheduler call `/api/internal/jobs/drain` with `Authorization: Bearer <secret>`.
+
 ### Production database
 
 Set `DATABASE_URL` to a PostgreSQL 15+ instance. Migrations run automatically at start-up. The connecting role must be allowed to create roles and to `SET ROLE onecrm_app` (see [SECURITY_MODEL](docs/SECURITY_MODEL.md)). The app refuses to start in production without `DATABASE_URL`. A `docker-compose.yml` is provided for local Postgres; it has **not** been exercised in this environment.

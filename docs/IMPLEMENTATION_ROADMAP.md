@@ -12,7 +12,7 @@
 | 7 | Enterprise (SSO, retention, consent, regional), i18n, mobile/offline, marketplace, public API, scale | Planned |
 
 ## Platform hierarchy (built 2026-11-08)
-Super Admin bootstrap and panel, company creation with administrator invitation, company lifecycle, platform audit, tenant-isolation tests across companies. **Done since:** custom roles with a granular permission editor, sectioned navigation, phone-width verification. **Next, in order:** job queue + domain events (unblocks notifications, import, automation), CSV lead import with duplicate resolution, departments/teams with a real `team` scope, products and quotations, logo upload and the numeric date-format pattern. Done already: company profile/settings page and company-time-zone/locale formatting, then support-access sessions, enforced Super Admin MFA, and plan limits/pricing.
+Super Admin bootstrap and panel, company creation with administrator invitation, company lifecycle, platform audit, tenant-isolation tests across companies. **Done since:** custom roles with a granular permission editor, sectioned navigation, phone-width verification. **Also done:** job queue, domain events (outbox), in-app notifications, email retry, housekeeping. **Next, in order:** CSV lead import with duplicate resolution (runs as a job), departments/teams with a real `team` scope, products and quotations, logo upload and the numeric date-format pattern. Done already: company profile/settings page and company-time-zone/locale formatting, then support-access sessions, enforced Super Admin MFA, and plan limits/pricing.
 
 ## Phase 1 completion gaps (next milestone, "1.1")
 Must-do before treating Phase 1 as production-ready:

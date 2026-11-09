@@ -173,7 +173,7 @@ for (const theme of ["light", "dark"] as const) {
     const detail = page.url();
     const urls = [
       "/super-admin", "/super-admin/companies", "/super-admin/companies/new", detail, "/super-admin/administrators",
-      "/super-admin/users", "/super-admin/countries", "/super-admin/plans", "/super-admin/audit", "/super-admin/security",
+      "/super-admin/users", "/super-admin/countries", "/super-admin/plans", "/super-admin/audit", "/super-admin/jobs", "/super-admin/security",
     ];
     for (const url of urls) {
       await page.goto(url);

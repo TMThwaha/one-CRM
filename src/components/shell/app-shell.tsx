@@ -1,17 +1,17 @@
 "use client";
 
 import {
-  Building2, Check, CheckSquare, ChevronDown, ChevronsUpDown, Handshake, KeyRound, LayoutDashboard, LogOut, Menu as MenuIcon, Monitor, Moon, Plus,
+  Bell, Building2, Check, CheckSquare, ChevronDown, ChevronsUpDown, Handshake, KeyRound, LayoutDashboard, LogOut, Menu as MenuIcon, Monitor, Moon, Plus,
   ScrollText, Search, ShieldCheck, Sun, Target, Users, UsersRound, type LucideIcon,
 } from "lucide-react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { Logo } from "@/components/logo";
 import { SessionProvider, useCan, useSession, type SessionInfo } from "@/components/session";
 import { Avatar, Button, Kbd, cn, useToast } from "@/components/ui";
-import { ApiError, post } from "@/lib/api";
+import { ApiError, api, post } from "@/lib/api";
 import { CommandPalette } from "./command-palette";
 import { QuickCreateProvider, useQuickCreate, type CreateKind } from "./quick-create";
 
@@ -158,6 +158,75 @@ export function ThemeToggle() {
           <MenuItem icon={Moon} active={mode === "dark"} onClick={() => { applyTheme("dark"); close(); }}>Dark</MenuItem>
           <MenuItem icon={Monitor} active={mode === "system"} onClick={() => { applyTheme("system"); close(); }}>System</MenuItem>
         </>
+      )}
+    </Popover>
+  );
+}
+
+interface NotificationItem { id: string; title: string; body: string | null; link: string | null; readAt: string | null; createdAt: string }
+
+/** Polls every 15s (plus on window focus). Live push (SSE/WebSocket) is Planned. */
+function NotificationBell() {
+  const router = useRouter();
+  const qc = useQueryClient();
+  const q = useQuery({
+    queryKey: ["notifications"],
+    queryFn: () => api<{ items: NotificationItem[]; unread: number }>("/notifications"),
+    refetchInterval: 15_000,
+  });
+  const unread = q.data?.unread ?? 0;
+  const markRead = async (body: { all: true } | { ids: string[] }) => {
+    await post("/notifications/read", body).catch(() => {});
+    await qc.invalidateQueries({ queryKey: ["notifications"] });
+  };
+  return (
+    <Popover
+      label={unread ? `Notifications, ${unread} unread` : "Notifications"}
+      trigger={
+        <span className="relative flex h-8 w-8 items-center justify-center rounded-lg text-muted hover:bg-hover hover:text-fg">
+          <Bell className="h-4 w-4" aria-hidden />
+          {unread > 0 && (
+            <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-semibold text-accent-fg">
+              {unread > 9 ? "9+" : unread}
+            </span>
+          )}
+        </span>
+      }
+    >
+      {(close) => (
+        <div className="w-80 max-w-[calc(100vw-2rem)]">
+          <div className="flex items-center justify-between px-2.5 py-1.5">
+            <p className="text-[11px] font-semibold tracking-wider text-faint uppercase">Notifications</p>
+            {unread > 0 && (
+              <button type="button" role="menuitem" className="rounded text-xs text-accent hover:underline" onClick={() => void markRead({ all: true })}>Mark all read</button>
+            )}
+          </div>
+          {!q.data?.items.length ? (
+            <p className="px-2.5 py-6 text-center text-sm text-muted">You are all caught up.</p>
+          ) : (
+            <div role="group" aria-label="Recent notifications" className="max-h-80 overflow-y-auto">
+              {q.data.items.map((n) => (
+                <button
+                  key={n.id}
+                  role="menuitem"
+                  type="button"
+                  className="flex w-full items-start gap-2 rounded-lg px-2.5 py-2 text-left hover:bg-hover"
+                  onClick={() => {
+                    close();
+                    if (!n.readAt) void markRead({ ids: [n.id] });
+                    if (n.link) router.push(n.link);
+                  }}
+                >
+                  <span className={cn("mt-1.5 h-2 w-2 shrink-0 rounded-full", n.readAt ? "bg-transparent" : "bg-accent")} aria-hidden />
+                  <span className="min-w-0">
+                    <span className={cn("block text-sm", !n.readAt && "font-medium")}>{n.title}</span>
+                    {n.body && <span className="block truncate text-xs text-muted">{n.body}</span>}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       )}
     </Popover>
   );
@@ -340,6 +409,7 @@ function Shell({ children }: { children: ReactNode }) {
           </button>
           <div className="ml-auto flex items-center gap-2">
             <CreateMenu />
+            <NotificationBell />
             <ThemeToggle />
             <UserMenu />
           </div>

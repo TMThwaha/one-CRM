@@ -4,3 +4,4 @@ export * from "./sales";
 export * from "./workforce";
 export * from "./platform";
 export * from "./platform-admin";
+export * from "./jobs";

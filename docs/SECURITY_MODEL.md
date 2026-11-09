@@ -67,3 +67,12 @@ CSP, validation of RLS on the production Postgres with a non-owner connection ro
 - **Coherence is enforced**: only real permissions, only scopes a permission supports (`own` is offered only where the services enforce it), and a write/delete/convert permission requires its read at least as broad.
 - System roles are immutable. A role cannot be deleted while people or live invitations use it. Every change is audited with a permission diff, and applies on the member's next request (permissions are re-read each request).
 - Tenant isolation holds: another company cannot see, edit or delete a role (404), and role names are per company.
+
+## Background jobs and events
+- **The queue is invisible to company code.** `jobs` has row-level security with no policy and no grant for the tenant role; tests prove a tenant transaction can neither read nor write it. Tenant services never enqueue: they append an event inside their own transaction.
+- **Events are tenant-scoped and append-only for tenants.** `domain_events` allows a company to insert and read only its own rows (forged organization ids are rejected), never update or delete them.
+- **Notifications are private to the person.** Row-level security checks organization *and* user, so even a colleague in the same company cannot read or mark another's notification; the tenant role cannot create or edit them (the worker does), and a composite foreign key makes notifying a non-member impossible.
+- **Emails in the queue are encrypted and wiped.** A retry payload usually holds a one-time link, so the body is AES-256-GCM encrypted at rest and the payload is cleared when the job succeeds or dies. Nothing is queued when SMTP is not configured.
+- **Delivery is at-least-once, handlers are idempotent.** Event fan-out uses per-(event, handler) idempotency keys; notifications are unique per (event, person). A handler that fails is retried on its own and never blocks another.
+- **Operator actions are audited.** Retry and cancel of a job go to the append-only platform audit log. The job monitor never shows payloads.
+- **Drain endpoint** needs `CRON_SECRET` (24+ chars), compared in constant time; without it the route does not exist.

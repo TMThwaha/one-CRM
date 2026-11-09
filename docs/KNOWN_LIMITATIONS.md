@@ -51,3 +51,12 @@ Honest list of what is missing, weak or unverified. Security-relevant items firs
 3. Navigation shows only built modules and has no favourites/pinning yet.
 4. A person cannot change their own role (an intentional safeguard), so a sole Company Admin cannot test a custom role on themselves; invite or use a second account.
 5. The registration rate limit (default 10 per IP per hour) is configurable via `REGISTER_RATE_LIMIT_PER_HOUR`; it is only raised for automated test runs.
+
+## Background jobs, events and notifications
+1. **The worker runs inside the web server process.** Fine for one instance and for several (claiming is `SKIP LOCKED`). On a host that does not keep a process alive (serverless), set `JOBS_WORKER=off` and call `/api/internal/jobs/drain` from a scheduler with `CRON_SECRET`. Latency is up to `JOBS_POLL_MS` (default 2 s) with the in-process worker, or the cron interval otherwise.
+2. **At-least-once, not exactly-once.** A handler can run twice if a worker dies mid-run, so every handler must be idempotent. A handler that outruns its timeout is reported failed but its code keeps running; it cannot be interrupted.
+3. **Only one event has a consumer.** `task.assigned` creates a notification. The other seven event types are recorded (and purged after 30 days) for the automation engine, which is Planned.
+4. **Notifications are in-app only and polled every 15 seconds.** No live push (SSE/WebSocket), no email or mobile push, no per-person preferences, and only task assignment generates one.
+5. **Email retries only apply when SMTP is configured**, and a retry can deliver after the inviter has already shared the link by hand (same single-use link, so harmless).
+6. **Job payloads other than email are stored in clear.** By rule they carry identifiers, not sensitive content. No per-kind throughput charts or schedule editor yet.
+7. **PGlite (development) is single-process**, so the worker shares the server's database handle. That works, but it is another reason production must use PostgreSQL.

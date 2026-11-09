@@ -13,6 +13,7 @@ import {
 } from "@/server/db/schema";
 import { withTenant, type Tx } from "@/server/db/tenant";
 import { audit } from "@/server/platform/audit";
+import { emit } from "@/server/jobs/emit";
 import { conflict, invalid, notFound } from "@/server/platform/errors";
 import { isOwnOnly, require as requirePerm, type AuthContext } from "@/server/modules/identity/context";
 import { recordSystemActivity } from "@/server/modules/workforce/activities.service";
@@ -264,6 +265,7 @@ export async function createDealInTx(tx: Tx, ctx: AuthContext, input: DealInput,
     metadata: { stage: stage.name, amount: deal.amount, currency: deal.currency },
   });
   await audit(tx, ctx, { action: "deal.created", entityType: "deal", entityId: deal.id, summary: deal.title });
+  await emit(tx, ctx, { type: "deal.created", entityType: "deal", entityId: deal.id });
   return deal;
 }
 
@@ -354,6 +356,7 @@ export async function moveDeal(ctx: AuthContext, id: string, input: unknown) {
       entityId: id,
       changes: { stage: { from: before.stageName, to: stage.name } },
     });
+    await emit(tx, ctx, { type: "deal.stage_changed", entityType: "deal", entityId: id, payload: { from: before.stageName, to: stage.name, status: stage.kind } });
     return row;
   });
 }

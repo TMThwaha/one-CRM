@@ -3,6 +3,7 @@ import { and, asc, desc, eq, ilike, isNull, or, sql } from "drizzle-orm";
 import { companies, contacts, dealContacts, deals, pipelineStages, tasks } from "@/server/db/schema";
 import { withTenant } from "@/server/db/tenant";
 import { audit } from "@/server/platform/audit";
+import { emit } from "@/server/jobs/emit";
 import { conflict, invalid, notFound } from "@/server/platform/errors";
 import { require as requirePerm, isOwnOnly, type AuthContext } from "@/server/modules/identity/context";
 import { recordSystemActivity } from "@/server/modules/workforce/activities.service";
@@ -154,6 +155,7 @@ export async function createContact(ctx: AuthContext, input: ContactInput) {
         .returning();
       await recordSystemActivity(tx, ctx, { contactId: row.id, subject: "Contact created" });
       await audit(tx, ctx, { action: "contact.created", entityType: "contact", entityId: row.id, summary: `${row.firstName} ${row.lastName ?? ""}`.trim() });
+      await emit(tx, ctx, { type: "contact.created", entityType: "contact", entityId: row.id });
       return row;
     });
   } catch (e) {

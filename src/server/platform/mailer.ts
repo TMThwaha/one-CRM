@@ -1,5 +1,6 @@
 import "server-only";
 import nodemailer from "nodemailer";
+import { queueEmailRetry } from "@/server/jobs/email-retry";
 import { getConfig } from "./config";
 
 export interface Email {
@@ -44,13 +45,19 @@ export function setMailerForTesting(m: Mailer | undefined) {
   mailer = m;
 }
 
-/** Sends without ever failing the caller's business transaction. Returns true only if actually handed to SMTP. */
+/**
+ * Sends without ever failing the caller's business transaction. Returns true only if actually handed to SMTP.
+ * If a real SMTP provider fails, the message is queued and retried with backoff (see jobs/email-retry);
+ * this call still reports false, because it was not delivered NOW.
+ */
 export async function sendBestEffort(email: Email): Promise<boolean> {
+  const mailer = getMailer();
   try {
-    await getMailer().send(email);
-    return getMailer().kind === "smtp";
+    await mailer.send(email);
+    return mailer.kind === "smtp";
   } catch (e) {
     console.error("[mail] delivery failed", e);
+    if (mailer.kind === "smtp") await queueEmailRetry(email).catch((q) => console.error("[mail] could not queue a retry", q));
     return false;
   }
 }

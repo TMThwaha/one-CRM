@@ -2,7 +2,7 @@
 
 Legend: **Tested** = covered by automated tests that pass. **Implemented** = works end to end but only manually exercised. **Planned** = not built.
 
-Last verified: 2026-11-08 — `npm run verify`: 114 unit/integration tests passed, lint 0 problems, typecheck clean, production build succeeds, `npm audit --omit=dev` 0 vulnerabilities. Playwright (real Chrome, production build, fresh database): 21 tests passed, including axe WCAG 2.1 A/AA scans (light and dark) and a phone-width (390px) layout check. Full audit of what exists: [EXISTING_SYSTEM_AUDIT.md](EXISTING_SYSTEM_AUDIT.md).
+Last verified: 2026-11-08 — `npm run verify`: 147 unit/integration tests passed, lint 0 problems, typecheck clean, production build succeeds, `npm audit --omit=dev` 0 vulnerabilities. Playwright (real Chrome, production build with the background worker running, fresh database): 22 tests passed, including the full assignment → notification flow and axe WCAG 2.1 A/AA scans. Full audit: [EXISTING_SYSTEM_AUDIT.md](EXISTING_SYSTEM_AUDIT.md).
 
 ## Platform hierarchy (Super Admin → Companies → Company Admin → employees)
 
@@ -53,9 +53,20 @@ Last verified: 2026-11-08 — `npm run verify`: 114 unit/integration tests passe
 | MFA (TOTP + recovery codes), email verification, password reset, password change, session list/revoke | Tested (services) / Implemented (UI) | Needs `SMTP_URL` to deliver mail, otherwise logged only. Verification is not enforced at sign-in. No WebAuthn, no enforced-MFA policy. |
 | Teams (as a grouping), `team` scope | **Planned** | |
 | Custom fields UI, tags UI, duplicate *merge* | **Planned** | Columns exist (`tags`, `custom`); no UI. |
-| Notifications | **Planned** | |
+| In-app notifications (bell, unread count, mark read) | Tested | First consumer of the event pipeline: assigning a task notifies the new assignee. Polled every 15 s; live push, per-person preferences, email/push delivery: Planned. |
 | Playwright E2E, accessibility automation, load tests | **Planned** | |
 | CI pipeline | Tested | `.github/workflows/ci.yml` ran green on GitHub Actions (2026-11-07, Ubuntu, Node 24): typecheck, lint, 58 tests, build, `npm audit --audit-level=high`. Runner pinned to `ubuntu-24.04`. |
+
+## Platform foundations (background work)
+
+| Feature | State | Notes |
+|---|---|---|
+| Job queue (Postgres, `SKIP LOCKED`): idempotent enqueue, retries with exponential backoff + jitter, dead-letter, timeouts, crash recovery by lease | Tested | At-least-once delivery: handlers must be idempotent. No new infrastructure (no Redis). |
+| Domain events (transactional outbox) + dispatcher: one job per interested handler, idempotent fan-out | Tested | 8 event types are emitted (`contact.created`, `lead.created`, `lead.converted`, `deal.created`, `deal.stage_changed`, `task.created`, `task.assigned`, `task.completed`). **Only `task.assigned` has a consumer today**; the rest are recorded for automation (Phase 3). |
+| Email retry: inline first attempt, queued retries (8 attempts over about a day) on SMTP failure | Tested | Message body stored encrypted and wiped when the job finishes. Nothing is queued when SMTP is not configured. |
+| Scheduled jobs + housekeeping (purges rate-limit hits, expired tokens and sessions, finished jobs, old events) | Tested | Hourly, exactly once across instances. Audit and authentication logs are never purged. |
+| In-process worker started by `instrumentation.ts`; secret-protected `/api/internal/jobs/drain` for serverless hosts | Tested (worker, drain logic) / Implemented (HTTP drain) | The drain endpoint's HTTP wrapper was exercised manually, not by an automated test. |
+| Super Admin "Background jobs": live queue health, problem jobs, retry / cancel | Tested (service) / Implemented (UI) | Retry and cancel are audited. |
 
 ## Product scope: module status (21 modules)
 Statuses: Planned · In Progress · Implemented · Tested · Blocked. Per-feature detail is in the tables above; how this was derived is in [EXISTING_SYSTEM_AUDIT.md](EXISTING_SYSTEM_AUDIT.md) §5.

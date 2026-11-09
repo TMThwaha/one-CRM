@@ -4,6 +4,7 @@ import { z } from "zod";
 import { companies, contacts, leads } from "@/server/db/schema";
 import { withTenant } from "@/server/db/tenant";
 import { audit } from "@/server/platform/audit";
+import { emit } from "@/server/jobs/emit";
 import { conflict, invalid, notFound } from "@/server/platform/errors";
 import { require as requirePerm, type AuthContext } from "@/server/modules/identity/context";
 import { recordSystemActivity } from "@/server/modules/workforce/activities.service";
@@ -75,6 +76,7 @@ export async function createLead(ctx: AuthContext, input: LeadInput) {
         .returning();
       await recordSystemActivity(tx, ctx, { leadId: row.id, subject: "Lead created", metadata: { source: row.source } });
       await audit(tx, ctx, { action: "lead.created", entityType: "lead", entityId: row.id, summary: `${row.firstName} ${row.lastName ?? ""}`.trim() });
+      await emit(tx, ctx, { type: "lead.created", entityType: "lead", entityId: row.id });
       return row;
     });
   } catch (e) {
@@ -243,6 +245,7 @@ export async function convertLead(ctx: AuthContext, id: string, input: unknown) 
     const summary = reused ? "Lead converted (matched existing contact)" : "Lead converted to contact";
     await recordSystemActivity(tx, ctx, { leadId: id, contactId, subject: summary, metadata: { dealId, reusedContact: reused } });
     await audit(tx, ctx, { action: "lead.converted", entityType: "lead", entityId: id, changes: { contactId, dealId, companyId, reusedContact: reused } });
+    await emit(tx, ctx, { type: "lead.converted", entityType: "lead", entityId: id, payload: { contactId, dealId, companyId } });
     return { contactId, companyId, dealId, reusedExistingContact: reused };
   });
 }

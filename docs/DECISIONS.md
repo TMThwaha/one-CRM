@@ -74,3 +74,15 @@ The platform lives at `/super-admin`. The company workspace keeps its existing U
 
 ## ADR-023 — Navigation shows built, permitted modules only
 Sections replace the two flat groups. Planned modules are not rendered as disabled links in the company workspace (unlike the platform panel, where the operator benefits from seeing the roadmap): ordinary employees should not face a wall of dead items. The roadmap lives in `IMPLEMENTATION_STATUS.md`. Collapse state is a per-device convenience stored in `localStorage`, and the section holding the current page never collapses.
+
+## ADR-024 — The job queue is Postgres, not Redis
+Jobs live in a `jobs` table claimed with `FOR UPDATE SKIP LOCKED`. This needs no new infrastructure, works on the embedded development database and on any PostgreSQL, enqueues transactionally with the data it concerns, and is fully inspectable. The cost is polling and write load, which is acceptable at this scale; the queue sits behind `enqueue()` / `defineJob()`, so moving to a dedicated broker later changes one module. Delivery is at-least-once with idempotent handlers; failures retry with exponential backoff and jitter and dead-letter after `maxAttempts`; crashed workers are recovered by lease expiry.
+
+## ADR-025 — Domain events use a transactional outbox
+Tenant services call `emit(tx, ctx, …)` inside their own transaction, right beside the audit write, so an event exists if and only if the change committed. A dispatcher (owning connection, `SKIP LOCKED`) turns each event into one `event.handle` job per interested handler with the idempotency key `evt:<event>:<handler>`. Each handler therefore has its own retries, and one failing handler cannot block or duplicate another. The tenant database role may append and read its own events only.
+
+## ADR-026 — The worker starts from `instrumentation.ts`
+Next.js calls `register()` once per server start, before requests are served; it starts a self-rescheduling timer loop (never blocking start-up, `unref`'d, guarded against hot-reload duplicates, backing off when the database is unavailable). For serverless hosts the same `tick()` is exposed through a secret-protected drain endpoint.
+
+## ADR-027 — Email is attempted inline first, queued only on failure
+Callers of `sendBestEffort` still learn immediately whether SMTP accepted the message (the invitation screen relies on it to show a copyable link). Only a real SMTP failure queues a retry, with the body encrypted and wiped on completion. Making all mail asynchronous would have made "was it sent?" unanswerable at request time.

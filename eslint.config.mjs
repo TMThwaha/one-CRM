@@ -15,6 +15,7 @@ const eslintConfig = defineConfig([
       "src/server/modules/identity/**",
       "src/server/modules/platform-admin/**",
       "src/server/dev/**", // development-only seed; refuses to run in production
+      "src/server/jobs/**", // the worker runs above any one tenant by design
       "src/server/db/**",
       "src/server/platform/rate-limit.ts",
       "src/app/api/v1/health/**",

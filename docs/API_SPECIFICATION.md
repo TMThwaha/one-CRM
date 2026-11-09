@@ -57,6 +57,16 @@ Authorised **only** by the platform resolver. A company session, including a Com
 | `DELETE /platform/companies/{id}/administrators/{membershipId}` | Steps a Company Admin down to Admin; refused for the last active one |
 | `POST /platform/companies/{id}/delete` | `{confirmName, password}`; archived companies only; soft delete |
 | `GET /platform/plans` | Plan catalogue |
+| `POST /platform/jobs/{id}/retry` · `POST /platform/jobs/{id}/cancel` | Dead/cancelled → queued with a fresh attempt budget; queued → cancelled. Both audited. Anything else 409 |
+
+### Internal
+`POST|GET /api/internal/jobs/drain` with `Authorization: Bearer $CRON_SECRET` runs the queue for up to 20 s. 404 when `CRON_SECRET` is not set, 401 for a wrong secret. For hosts that cannot keep a worker process running.
+
+### Notifications (the signed-in person's own)
+| Method & path | Notes |
+|---|---|
+| `GET /notifications` | `{items (latest 20), unread}`. Row-level security limits rows to the caller, inside their company |
+| `POST /notifications/read` | `{all: true}` or `{ids: [uuid…]}`. Marking someone else's notification changes nothing |
 
 ### Company settings (Company Admin, `org.manage`)
 | Method & path | Notes |

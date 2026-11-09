@@ -29,8 +29,8 @@ Size: ~12.6k lines in `src`, ~1.9k lines of tests; 100 unit/integration tests an
 - Permission catalogue and role definitions are shared by server (enforcement) and UI (hiding only).
 
 **Gaps that will constrain the roadmap**
-1. **No background execution.** Anything asynchronous (automation, scheduled reports, email retries, imports) has nowhere to run. Mail is sent inline, best-effort. A job queue is the single biggest missing foundation (Phases 2-5 depend on it).
-2. **No event bus.** Changes are not published as domain events, so automation triggers and notifications have no source.
+1. ~~**No background execution.**~~ **Fixed 2026-11-08:** Postgres-backed job queue, in-process worker, scheduled housekeeping, email retries.
+2. ~~**No event bus.**~~ **Fixed 2026-11-08:** transactional-outbox domain events with a dispatcher; first consumer is in-app notifications.
 3. **No file storage**, so attachments, logo upload, document library and CSV import have no home.
 4. ~~**Roles are fixed.**~~ **Fixed 2026-11-08:** custom roles with a granular permission editor (`role.manage`).
 5. **No departments or teams.** The `team` permission scope exists but is enforced as `own` because teams do not exist.
@@ -46,7 +46,7 @@ Size: ~12.6k lines in `src`, ~1.9k lines of tests; 100 unit/integration tests an
 | S3 | RLS verified on PGlite only, not on a managed Postgres with a non-owner connection role | Medium | Open |
 | S4 | Super Admin MFA is encouraged, not enforced; no support-access mechanism; no second Super Admin path | Medium | Open |
 | S5 | Email verification is not enforced at sign-in | Low | Open |
-| S6 | Rate limiter writes one row per limited request (fine at this scale, not at high volume) | Low | Open |
+| S6 | Rate limiter writes one row per limited request (fine at this scale, not at high volume) | Low | Mitigated: housekeeping now purges old rows hourly; still a write per request |
 | S7 | Logo URL is fetched by each user's browser from a company-chosen https host | Low | Accepted (no referrer sent); replace with upload when storage exists |
 | S8 | Embedded PGlite is single-process and was corrupted in development by an unclean stop | Dev only | Mitigated: documented; production requires Postgres |
 | S9 | No Dockerfile / hardened deployment, no secret-management integration, no backup or restore procedure | Medium | Open |
